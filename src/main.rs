@@ -35,9 +35,17 @@ fn main() {
 
     let Opt { uri, backoff, cmd } = Opt::from_args();
 
-    let mut rt = Runtime::new().expect("runtime");
-    if rt.block_on(await_ready(uri, backoff)).is_err() {
-        process::exit(1);
+    let disabled_reason = std::env::var("LINKERD_DISABLED")
+        .ok()
+        .filter(|v| !v.is_empty());
+    match disabled_reason {
+        Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
+        None => {
+            let mut rt = Runtime::new().expect("runtime");
+            if rt.block_on(await_ready(uri, backoff)).is_err() {
+                process::exit(1);
+            }
+        }
     }
 
     let mut args = cmd.into_iter();

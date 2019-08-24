@@ -5,7 +5,7 @@ A command-wrapper that polls linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.1.0
+linkerd-await 0.1.1
 Oliver Gould <ver@buoyant.io>
 Wait for linkerd to become ready before running a program.
 
@@ -34,14 +34,29 @@ possible to use this utility in `scratch` images:
 ```dockerfile
 FROM scratch
 # ...
-COPY --from=olix0r/linkerd-await:v0.1.0 /linkerd-await /
+COPY --from=olix0r/linkerd-await:v0.1.1 /linkerd-await /
 ENTRYPOINT ["/linkerd-await", "--"]
 CMD ["/myapp", "-flags"]
 ```
 
+Note that the `LINKERD_DISABLED` flag can be set to bypass `linkerd-await`'s
+readiness checks. This way, `linkerd-await` may be controlled by overriding a
+default environment variable:
+
+```yaml
+    # ...
+    spec:
+      containers:
+        - name: myapp
+          env:
+            - name: LINKERD_DISABLED
+              value: "Linkerd is disabled ;("
+          # ...
+```
+
 ## License
 
-linkerd-await is copyright 2018 the Linkerd authors. All rights reserved.
+linkerd-await is copyright 2019 the Linkerd authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the

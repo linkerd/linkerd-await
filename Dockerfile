@@ -1,4 +1,4 @@
-ARG RUST_IMAGE=rust:1.33-slim-stretch
+ARG RUST_IMAGE=rust:1.37-slim-stretch
 FROM $RUST_IMAGE as build
 RUN rustup target add x86_64-unknown-linux-musl
 WORKDIR /usr/src/linkerd-await

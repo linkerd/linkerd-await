@@ -1,9 +1,4 @@
-extern crate futures;
-extern crate http;
-extern crate hyper;
-extern crate regex;
-extern crate structopt;
-extern crate tokio;
+#![deny(warnings, rust_2018_idioms)]
 
 use futures::Future;
 use std::time::Duration;
@@ -97,7 +92,7 @@ fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
 struct InvalidDuration;
 
 impl fmt::Display for InvalidDuration {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid duration")
     }
 }

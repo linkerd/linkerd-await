@@ -1,6 +1,6 @@
 # linkerd-await
 
-A command-wrapper that polls linkerd for readiness until it becomes ready and only then executes a comma
+A command-wrapper that polls Linkerd for readiness until it becomes ready and only then executes a command.
 
 ## Usage
 

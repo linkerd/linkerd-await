@@ -5,7 +5,7 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.1.1
+linkerd-await 0.1.2
 Oliver Gould <ver@buoyant.io>
 Wait for linkerd to become ready before running a program.
 
@@ -32,9 +32,11 @@ The `linkerd-await` container image contains only a static binary, so it's
 possible to use this utility in `scratch` images:
 
 ```dockerfile
+ARG LINKERD_AWAIT_VERSION=v0.1.2
+
 FROM scratch
-# ...
-COPY --from=olix0r/linkerd-await:v0.1.1 /linkerd-await /
+RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/${LINKERD_AWAIT_VERSION}/linkerd-await
+# ... install myapp ..
 ENTRYPOINT ["/linkerd-await", "--"]
 CMD ["/myapp", "-flags"]
 ```

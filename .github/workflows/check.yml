@@ -1,0 +1,16 @@
+name: Check
+
+on:
+  pull_request: {}
+  push:
+    branches:
+    - master
+
+jobs:
+  check:
+    runs-on: ubuntu-18.04
+    container:
+      image: docker://rust:1.37-buster
+    steps:
+    - uses: actions/checkout@v1
+    - run: make check-fmt check

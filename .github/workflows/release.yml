@@ -31,5 +31,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         files: release/*
-        name: ${{steps.release-tag-meta.name}}
+        name: ${{ steps.release-tag-meta.outputs.name }}
 

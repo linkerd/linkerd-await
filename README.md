@@ -35,7 +35,7 @@ possible to use this utility in `scratch` images:
 ARG LINKERD_AWAIT_VERSION=v0.1.2
 
 FROM scratch
-RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/${LINKERD_AWAIT_VERSION}/linkerd-await
+RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await
 # ... install myapp ..
 ENTRYPOINT ["/linkerd-await", "--"]
 CMD ["/myapp", "-flags"]

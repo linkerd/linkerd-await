@@ -41,6 +41,35 @@ ENTRYPOINT ["/linkerd-await", "--"]
 CMD ["/myapp", "-flags"]
 ```
 
+In a multi-stage build, `linkerd-await` can be downloaded in a previous stage as follows:
+
+```dockerfile
+FROM node:alpine as builder
+
+WORKDIR /app
+
+RUN apk add --update curl && rm -rf /var/cache/apk/*
+
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+
+ARG LINKERD_AWAIT_VERSION=v0.1.2
+RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await && \
+  chmod +x linkerd-await
+
+FROM node:alpine
+
+WORKDIR /app
+
+COPY --from=builder /app .
+
+USER 10001
+
+ENTRYPOINT ["./linkerd-await", "--"]
+CMD  ["node", "index.js"]
+```
+
 Note that the `LINKERD_DISABLED` flag can be set to bypass `linkerd-await`'s
 readiness checks. This way, `linkerd-await` may be controlled by overriding a
 default environment variable:

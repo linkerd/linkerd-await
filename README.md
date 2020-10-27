@@ -5,7 +5,7 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.1.2
+linkerd-await 0.1.3
 Oliver Gould <ver@buoyant.io>
 Wait for linkerd to become ready before running a program.
 
@@ -32,7 +32,7 @@ The `linkerd-await` container image contains only a static binary, so it's
 possible to use this utility in `scratch` images:
 
 ```dockerfile
-ARG LINKERD_AWAIT_VERSION=v0.1.2
+ARG LINKERD_AWAIT_VERSION=v0.1.3
 
 FROM scratch
 RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await
@@ -54,7 +54,7 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 
-ARG LINKERD_AWAIT_VERSION=v0.1.2
+ARG LINKERD_AWAIT_VERSION=v0.1.3
 RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await && \
   chmod +x linkerd-await
 

@@ -1,9 +1,9 @@
 #![deny(warnings, rust_2018_idioms)]
 
-use futures::Future;
 use std::time::Duration;
 use std::{error, fmt};
 use structopt::StructOpt;
+use tokio::time::delay_for;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt()]
@@ -20,7 +20,7 @@ struct Opt {
         short = "b",
         long = "backoff",
         default_value = "1s",
-        parse(try_from_str = "parse_duration")
+        parse(try_from_str = parse_duration)
     )]
     backoff: Duration,
 
@@ -28,10 +28,10 @@ struct Opt {
     cmd: Vec<String>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     use std::os::unix::process::CommandExt;
     use std::process::{self, Command};
-    use tokio::runtime::Runtime;
 
     let Opt { uri, backoff, cmd } = Opt::from_args();
 
@@ -41,10 +41,7 @@ fn main() {
     match disabled_reason {
         Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
-            let mut rt = Runtime::new().expect("runtime");
-            if rt.block_on(await_ready(uri, backoff)).is_err() {
-                process::exit(1);
-            }
+            await_ready(uri, backoff).await;
         }
     }
 
@@ -57,26 +54,16 @@ fn main() {
         eprintln!("Failed to exec child program: {}: {}", command, err);
         process::exit(1);
     }
-
-    process::exit(0);
 }
 
-fn await_ready(uri: http::Uri, backoff: Duration) -> impl Future<Item = (), Error = ()> {
-    use futures::future::{self, Either, Loop};
-    use std::time::Instant;
-    use tokio::timer::Delay;
-
+async fn await_ready(uri: http::Uri, backoff: Duration) {
     let client = hyper::Client::default();
-    future::loop_fn((client, uri, backoff), |(client, uri, backoff)| {
-        client.get(uri.clone()).then(move |r| match r {
-            Ok(ref rsp) if rsp.status().is_success() => Either::A(future::ok(Loop::Break(()))),
-            _ => Either::B(
-                Delay::new(Instant::now() + backoff)
-                    .map_err(|e| panic!("timer failed: {}", e))
-                    .map(move |_| Loop::Continue((client, uri, backoff))),
-            ),
-        })
-    })
+    loop {
+        match client.get(uri.clone()).await {
+            Ok(ref rsp) if rsp.status().is_success() => return,
+            _ => delay_for(backoff).await,
+        }
+    }
 }
 
 fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {

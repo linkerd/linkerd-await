@@ -1,6 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
-use std::{error, fmt};
+use std::{error, fmt, str::FromStr};
 use structopt::StructOpt;
 use tokio::time;
 
@@ -9,11 +9,12 @@ use tokio::time;
 /// Wait for linkerd to become ready before running a program.
 struct Opt {
     #[structopt(
-        short = "u",
-        long = "uri",
-        default_value = "http://127.0.0.1:4191/ready"
+        short = "p",
+        long = "port",
+        default_value = "4191",
+        help = "The port of the local Linkerd proxy admin server"
     )]
-    uri: hyper::Uri,
+    port: u16,
 
     #[structopt(
         short = "b",
@@ -32,7 +33,9 @@ async fn main() {
     use std::os::unix::process::CommandExt;
     use std::process::{self, Command};
 
-    let Opt { uri, backoff, cmd } = Opt::from_args();
+    let Opt { port, backoff, cmd } = Opt::from_args();
+
+    let authority = http::uri::Authority::from_str(&format!("127.0.0.1:{}", port)).unwrap();
 
     let disabled_reason = std::env::var("LINKERD_DISABLED")
         .ok()
@@ -40,7 +43,7 @@ async fn main() {
     match disabled_reason {
         Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
-            await_ready(uri, backoff).await;
+            await_ready(authority, backoff).await;
         }
     }
 
@@ -55,7 +58,13 @@ async fn main() {
     }
 }
 
-async fn await_ready(uri: hyper::Uri, backoff: time::Duration) {
+async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
+    let uri = http::Uri::builder()
+        .authority(auth)
+        .path_and_query("/ready")
+        .build()
+        .unwrap();
+
     let client = hyper::Client::default();
     loop {
         match client.get(uri.clone()).await {

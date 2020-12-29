@@ -1,6 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 
-use std::{error, fmt, str::FromStr};
+use regex::Regex;
+use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use structopt::StructOpt;
 use tokio::time;
 
@@ -25,46 +26,134 @@ struct Opt {
     )]
     backoff: time::Duration,
 
+    #[structopt(
+        short = "S",
+        long = "shutdown",
+        help = "Forks the program and triggers proxy shutdown on completion"
+    )]
+    shutdown: bool,
+
     #[structopt(name = "CMD")]
-    cmd: Vec<String>,
+    cmd: String,
+
+    #[structopt(name = "ARGS")]
+    args: Vec<String>,
 }
+
+// From https://man.netbsd.org/sysexits.3
+const EX_OSERR: i32 = 71;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    use std::os::unix::process::CommandExt;
-    use std::process::{self, Command};
+    let Opt {
+        port,
+        backoff,
+        shutdown,
+        cmd,
+        args,
+    } = Opt::from_args();
 
-    let Opt { port, backoff, cmd } = Opt::from_args();
+    let authority = http::uri::Authority::from_str(&format!("localhost:{}", port))
+        .expect("HTTP authority must be valid");
 
-    let authority = http::uri::Authority::from_str(&format!("127.0.0.1:{}", port)).unwrap();
-
-    if cmd.is_empty() {
-        process::exit(0); // EX_USAGE
-    }
-
-    let disabled_reason = std::env::var("LINKERD_DISABLED")
-        .ok()
-        .filter(|v| !v.is_empty());
-    match disabled_reason {
+    // If linkerd is not explicitly disabled, wait until the proxy is ready
+    // before running the application.
+    match linkerd_disabled_reason() {
         Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
-            await_ready(authority, backoff).await;
+            await_ready(authority.clone(), backoff).await;
+
+            if shutdown {
+                // If shutdown is configured, fork the process and proxy SIGTERM.
+                let ex = fork_with_sigterm(cmd, args).await;
+
+                // Once the process completes, issue a shutdown request to the
+                // proxy.
+                send_shutdown(authority).await;
+
+                // Try to exit with the process's original exit code
+                if let Ok(status) = ex {
+                    if let Some(code) = status.code() {
+                        std::process::exit(code);
+                    }
+                }
+
+                // If we didn't get an exit code from the forked program, fail
+                // with an OS error.
+                std::process::exit(EX_OSERR);
+            }
         }
     }
 
-    let mut args = cmd.into_iter();
-    if let Some(command) = args.next() {
-        let mut cmd = Command::new(&command);
-        cmd.args(args);
+    // If Linkerd shutdown is not configured, exec the process directly so that
+    // the we don't have to bother with signal proxying, etc.
+    exec(cmd, args);
+}
 
-        let err = cmd.exec();
-        eprintln!("Failed to exec child program: {}: {}", command, err);
-        process::exit(1);
+fn linkerd_disabled_reason() -> Option<String> {
+    std::env::var("LINKERD_DISABLED")
+        .ok()
+        .filter(|v| !v.is_empty())
+}
+
+/// Execs the process.
+fn exec(cmd: String, args: Vec<String>) {
+    use std::{
+        os::unix::process::CommandExt,
+        process::{self, Command},
+    };
+
+    // Execute the command (and never return). If the command could not be
+    // executed, just exit with an OS error.
+    let err = Command::new(&cmd).args(args).exec();
+    eprintln!("Failed to exec child program: {}: {}", cmd, err);
+    process::exit(EX_OSERR);
+}
+
+/// Forks the specified process, proxying SIGTERM.
+async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitStatus> {
+    use nix::{
+        sys::signal::{kill, Signal::SIGTERM},
+        unistd::Pid,
+    };
+    use tokio::{
+        process::Command,
+        signal::unix::{signal, SignalKind},
+    };
+
+    let mut child = match Command::new(&cmd).args(args).spawn() {
+        Ok(child) => child,
+        Err(e) => {
+            eprintln!("Failed to fork child program: {}: {}", cmd, e);
+            std::process::exit(EX_OSERR);
+        }
+    };
+
+    // If the process is running, wait until we receive a SIGTERM, which kubelet
+    // uses to initiate graceful shutdown.
+    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+
+    // Wait for the process to exit on its own or, if a SIGTERM is received,
+    // proxy the signal so it begins shutdown.
+    tokio::select! {
+        ex = child.wait() => ex,
+        _ = sigterm.recv() => {
+            if let Some(pid) = child.id() {
+                // If the child hasn't already completed, send a SIGTERM.
+                if let Err(e) = kill(Pid::from_raw(pid.try_into().expect("Invalid PID")), SIGTERM) {
+                    eprintln!("Failed to forward SIGTERM to child process: {}", e);
+                }
+            }
+            // Wait to get the child's exit code.
+            child.wait().await
+        }
     }
 }
 
 async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
-    let uri = http::Uri::builder()
+    const TIMEOUT: time::Duration = time::Duration::from_secs(5);
+
+    let uri = hyper::Uri::builder()
         .scheme(http::uri::Scheme::HTTP)
         .authority(auth)
         .path_and_query("/ready")
@@ -73,17 +162,32 @@ async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
 
     let client = hyper::Client::default();
     loop {
-        match client.get(uri.clone()).await {
-            Ok(ref rsp) if rsp.status().is_success() => return,
+        match time::timeout(TIMEOUT, client.get(uri.clone())).await {
+            Ok(Ok(ref rsp)) if rsp.status().is_success() => return,
             _ => time::sleep(backoff).await,
         }
     }
 }
 
-fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
-    use regex::Regex;
-    use time::Duration;
+async fn send_shutdown(auth: http::uri::Authority) {
+    let uri = hyper::Uri::builder()
+        .scheme(http::uri::Scheme::HTTP)
+        .authority(auth)
+        .path_and_query("/shutdown")
+        .build()
+        .unwrap();
 
+    let req = http::Request::builder()
+        .method(http::Method::POST)
+        .uri(uri)
+        .body(Default::default())
+        .expect("shutdown request must be valid");
+
+    let _ = hyper::Client::default().request(req).await;
+}
+
+fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
+    use tokio::time::Duration;
     let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
     let cap = re.captures(s).ok_or(InvalidDuration)?;
     let magnitude = cap[1].parse().map_err(|_| InvalidDuration)?;

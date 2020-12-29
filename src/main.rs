@@ -1,28 +1,30 @@
 #![deny(warnings, rust_2018_idioms)]
 
 use regex::Regex;
-use std::{convert::TryInto, error, fmt};
+use std::{convert::TryInto, error, fmt, str::FromStr};
 use structopt::StructOpt;
-use tokio::time::{delay_for, Duration};
+use tokio::time;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt()]
 /// Wait for linkerd to become ready before running a program.
 struct Opt {
     #[structopt(
-        short = "u",
-        long = "base-url",
-        default_value = "http://127.0.0.1:4191/"
+        short = "p",
+        long = "port",
+        default_value = "4191",
+        help = "The port of the local Linkerd proxy admin server"
     )]
-    base_url: http::Uri,
+    port: u16,
 
     #[structopt(
         short = "b",
         long = "backoff",
         default_value = "1s",
-        parse(try_from_str = parse_duration)
+        parse(try_from_str = parse_duration),
+        help = "Time to wait after a failed readiness check",
     )]
-    backoff: Duration,
+    backoff: time::Duration,
 
     #[structopt(
         short = "S",
@@ -35,14 +37,20 @@ struct Opt {
     cmd: Vec<String>,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let Opt {
-        base_url,
+        port,
         backoff,
         shutdown,
         cmd,
     } = Opt::from_args();
+
+    let authority = http::uri::Authority::from_str(&format!("127.0.0.1:{}", port)).unwrap();
+
+    if cmd.is_empty() {
+        std::process::exit(0);
+    }
 
     let disabled_reason = std::env::var("LINKERD_DISABLED")
         .ok()
@@ -50,7 +58,7 @@ async fn main() {
     match disabled_reason {
         Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
-            await_ready(base_url.clone(), backoff).await;
+            await_ready(authority.clone(), backoff).await;
         }
     }
 
@@ -58,7 +66,7 @@ async fn main() {
     if let Some(command) = args.next() {
         if shutdown {
             let res = fork_and_wait(command, args).await;
-            send_shutdown(base_url).await;
+            send_shutdown(authority).await;
             if let Ok(status) = res {
                 if let Some(code) = status.code() {
                     std::process::exit(code);
@@ -100,7 +108,7 @@ async fn fork_and_wait(
     let mut cmd = Command::new(&name);
     cmd.args(args);
 
-    let child = match cmd.spawn() {
+    let mut child = match cmd.spawn() {
         Ok(child) => child,
         Err(e) => {
             eprintln!("Failed to fork child program: {}: {}", name, e);
@@ -108,54 +116,47 @@ async fn fork_and_wait(
         }
     };
 
-    // Proxy relevant signals.
-    let cid = nix::unistd::Pid::from_raw(child.id().try_into().expect("Invalid PID"));
-    tokio::spawn(async move {
-        // SIGINT  - To allow Ctrl-c to emulate SIGTERM while developing.
-        let mut sigint =
-            signal(SignalKind::interrupt()).expect("Failed to register signal handler");
-        // SIGTERM - Kubernetes sends this to start a graceful shutdown.
-        let mut sigterm =
-            signal(SignalKind::terminate()).expect("Failed to register signal handler");
-        tokio::select! {
-            _ = sigint.recv() => {
-                if let Err(e) = nix::sys::signal::kill(cid, nix::sys::signal::Signal::SIGINT) {
-                    eprintln!("Failed to forward SIGINT to child process: {}", e);
-                }
+    if let Some(id) = child.id() {
+        // Proxy relevant signals.
+        let cid = nix::unistd::Pid::from_raw(id.try_into().expect("Invalid PID"));
+        tokio::spawn(async move {
+            // SIGTERM - Kubernetes sends this to start a graceful shutdown.
+            let mut sigterm =
+                signal(SignalKind::terminate()).expect("Failed to register signal handler");
+            sigterm.recv().await;
+            if let Err(e) = nix::sys::signal::kill(cid, nix::sys::signal::Signal::SIGTERM) {
+                eprintln!("Failed to forward SIGTERM to child process: {}", e);
             }
-            _ = sigterm.recv() => {
-                if let Err(e) = nix::sys::signal::kill(cid, nix::sys::signal::Signal::SIGTERM) {
-                    eprintln!("Failed to forward SIGTERM to child process: {}", e);
-                }
-            }
-        };
-    });
+        });
+    }
 
-    child.await
+    child.wait().await
 }
 
-async fn await_ready(base_url: http::Uri, backoff: Duration) {
-    let uri = {
-        let mut parts = base_url.into_parts();
-        parts.path_and_query = Some("/ready".try_into().unwrap());
-        http::Uri::from_parts(parts).expect("Ready URI must be valid")
-    };
+async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
+    let uri = hyper::Uri::builder()
+        .scheme(http::uri::Scheme::HTTP)
+        .authority(auth)
+        .path_and_query("/ready")
+        .build()
+        .unwrap();
 
     let client = hyper::Client::default();
     loop {
         match client.get(uri.clone()).await {
             Ok(ref rsp) if rsp.status().is_success() => return,
-            _ => delay_for(backoff).await,
+            _ => time::sleep(backoff).await,
         }
     }
 }
 
-async fn send_shutdown(base_url: http::Uri) {
-    let uri = {
-        let mut parts = base_url.into_parts();
-        parts.path_and_query = Some("/shutdown".try_into().unwrap());
-        http::Uri::from_parts(parts).expect("Shutdown URI must be valid")
-    };
+async fn send_shutdown(auth: http::uri::Authority) {
+    let uri = hyper::Uri::builder()
+        .scheme(http::uri::Scheme::HTTP)
+        .authority(auth)
+        .path_and_query("/shutdown")
+        .build()
+        .unwrap();
 
     let req = http::Request::builder()
         .method(http::Method::POST)
@@ -166,7 +167,8 @@ async fn send_shutdown(base_url: http::Uri) {
     let _ = hyper::Client::default().request(req).await;
 }
 
-fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
+fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
+    use tokio::time::Duration;
     let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
     let cap = re.captures(s).ok_or(InvalidDuration)?;
     let magnitude = cap[1].parse().map_err(|_| InvalidDuration)?;

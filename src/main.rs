@@ -97,24 +97,21 @@ fn linkerd_disabled_reason() -> Option<String> {
 }
 
 /// Execs the process.
-fn exec(name: String, args: Vec<String>) {
+fn exec(cmd: String, args: Vec<String>) {
     use std::{
         os::unix::process::CommandExt,
         process::{self, Command},
     };
 
-    let mut cmd = Command::new(&name);
-    cmd.args(args);
-
-    let err = cmd.exec();
-
-    // If the command could not be executed, just exit with an OS error.
-    eprintln!("Failed to exec child program: {}: {}", name, err);
+    // Execute the command (and never return). If the command could not be
+    // executed, just exit with an OS error.
+    let err = Command::new(&cmd).args(args).exec();
+    eprintln!("Failed to exec child program: {}: {}", cmd, err);
     process::exit(EX_OSERR);
 }
 
 /// Forks the specified process, proxying SIGTERM.
-async fn fork_with_sigterm(name: String, args: Vec<String>) -> io::Result<ExitStatus> {
+async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitStatus> {
     use nix::{
         sys::signal::{kill, Signal::SIGTERM},
         unistd::Pid,
@@ -124,13 +121,10 @@ async fn fork_with_sigterm(name: String, args: Vec<String>) -> io::Result<ExitSt
         signal::unix::{signal, SignalKind},
     };
 
-    let mut cmd = Command::new(&name);
-    cmd.args(args);
-
-    let mut child = match cmd.spawn() {
+    let mut child = match Command::new(&cmd).args(args).spawn() {
         Ok(child) => child,
         Err(e) => {
-            eprintln!("Failed to fork child program: {}: {}", name, e);
+            eprintln!("Failed to fork child program: {}: {}", cmd, e);
             std::process::exit(EX_OSERR);
         }
     };

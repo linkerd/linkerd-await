@@ -28,39 +28,28 @@ ARGS:
 
 ### Dockerfile
 
-The `linkerd-await` container image contains only a static binary, so it's
-possible to use this utility in `scratch` images:
-
 ```dockerfile
+# Create a base layer with linkerd-await froma recent release.
+FROM docker.io/curlimages/curl:latest as linkerd
 ARG LINKERD_AWAIT_VERSION=v0.1.3
+RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await
+RUN chmod 755 /tmp/linkerd-await
 
+# Build your application with whatever environment makes sense.
+FROM myapp-build as app
+WORKDIR /app
+RUN make build
+
+# Package the application wrapped by linkerd-await. Note that the binary is
+# static so it can be used on `scratch` images:
 FROM scratch
-RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await
-# ... install myapp ..
+COPY --from=linkerd /tmp/linkerd-await /linkerd-await
+COPY --from=app /app/myapp /myapp
 ENTRYPOINT ["/linkerd-await", "--"]
-CMD ["/myapp", "-flags"]
+CMD  ["/myapp"]
 ```
 
-In a multi-stage build, `linkerd-await` can be downloaded in a previous stage as follows:
-
-```dockerfile
-FROM node:alpine as builder
-WORKDIR /app
-RUN apk add --update curl && rm -rf /var/cache/apk/*
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-ARG LINKERD_AWAIT_VERSION=v0.2.0
-RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await && \
-  chmod +x linkerd-await
-
-FROM node:alpine
-WORKDIR /app
-COPY --from=builder /app .
-USER 10001
-ENTRYPOINT ["./linkerd-await", "--"]
-CMD  ["node", "index.js"]
-```
+### Disabling `linkerd-await` at runtime
 
 Note that the `LINKERD_DISABLED` flag can be set to bypass `linkerd-await`'s
 readiness checks. This way, `linkerd-await` may be controlled by overriding a

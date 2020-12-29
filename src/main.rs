@@ -20,7 +20,8 @@ struct Opt {
         short = "b",
         long = "backoff",
         default_value = "1s",
-        parse(try_from_str = parse_duration)
+        parse(try_from_str = parse_duration),
+        help = "Time to wait after a failed readiness check",
     )]
     backoff: time::Duration,
 
@@ -36,6 +37,10 @@ async fn main() {
     let Opt { port, backoff, cmd } = Opt::from_args();
 
     let authority = http::uri::Authority::from_str(&format!("127.0.0.1:{}", port)).unwrap();
+
+    if cmd.is_empty() {
+        process::exit(0); // EX_USAGE
+    }
 
     let disabled_reason = std::env::var("LINKERD_DISABLED")
         .ok()
@@ -60,6 +65,7 @@ async fn main() {
 
 async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
     let uri = http::Uri::builder()
+        .scheme("http")
         .authority(auth)
         .path_and_query("/ready")
         .build()

@@ -31,7 +31,7 @@ ARGS:
 ```dockerfile
 # Create a base layer with linkerd-await froma recent release.
 FROM docker.io/curlimages/curl:latest as linkerd
-ARG LINKERD_AWAIT_VERSION=v0.1.3
+ARG LINKERD_AWAIT_VERSION=v0.2.0
 RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await
 RUN chmod 755 /tmp/linkerd-await
 
@@ -45,7 +45,10 @@ RUN make build
 FROM scratch
 COPY --from=linkerd /tmp/linkerd-await /linkerd-await
 COPY --from=app /app/myapp /myapp
-ENTRYPOINT ["/linkerd-await", "--"]
+# In this case, we configure the proxy to be shutdown after `myapp` completes
+# running. This is only really needed for jobs where the application is
+# expected to complete on its own (namely, `Jobs` and `Cronjobs`)
+ENTRYPOINT ["/linkerd-await", "--shutdown" "--"]
 CMD  ["/myapp"]
 ```
 

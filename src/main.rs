@@ -65,7 +65,7 @@ async fn main() {
 
 async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
     let uri = http::Uri::builder()
-        .scheme("http")
+        .scheme(http::uri::Scheme::HTTP)
         .authority(auth)
         .path_and_query("/ready")
         .build()

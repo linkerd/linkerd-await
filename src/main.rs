@@ -1,7 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 
 use regex::Regex;
-use std::{convert::TryInto, error, fmt, str::FromStr};
+use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use structopt::StructOpt;
 use tokio::time;
 
@@ -34,8 +34,14 @@ struct Opt {
     shutdown: bool,
 
     #[structopt(name = "CMD")]
-    cmd: Vec<String>,
+    cmd: String,
+
+    #[structopt(name = "ARGS")]
+    args: Vec<String>,
 }
+
+// From https://man.netbsd.org/sysexits.3
+const EX_OSERR: i32 = 71;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -44,46 +50,54 @@ async fn main() {
         backoff,
         shutdown,
         cmd,
+        args,
     } = Opt::from_args();
 
-    let authority = http::uri::Authority::from_str(&format!("localhost:{}", port)).unwrap();
+    let authority = http::uri::Authority::from_str(&format!("localhost:{}", port))
+        .expect("HTTP authority must be valid");
 
-    if cmd.is_empty() {
-        std::process::exit(0);
-    }
-
-    let disabled_reason = std::env::var("LINKERD_DISABLED")
-        .ok()
-        .filter(|v| !v.is_empty());
-    match disabled_reason {
-        Some(ref reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
+    // If linkerd is not explicitly disabled, wait until the proxy is ready
+    // before running the application.
+    match linkerd_disabled_reason() {
+        Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
             await_ready(authority.clone(), backoff).await;
+
+            if shutdown {
+                // If shutdown is configured, fork the process and proxy SIGTERM.
+                let ex = fork_with_sigterm(cmd, args).await;
+
+                // Once the process completes, issue a shutdown request to the
+                // proxy.
+                send_shutdown(authority).await;
+
+                // Try to exit with the process's original exit code
+                if let Ok(status) = ex {
+                    if let Some(code) = status.code() {
+                        std::process::exit(code);
+                    }
+                }
+
+                // If we didn't get an exit code from the forked program, fail
+                // with an OS error.
+                std::process::exit(EX_OSERR);
+            }
         }
     }
 
-    let mut args = cmd.into_iter();
-    if let Some(command) = args.next() {
-        if shutdown {
-            let ex = fork_and_wait(command, args).await;
-            if disabled_reason.is_none() {
-                send_shutdown(authority).await;
-            }
-            if let Ok(status) = ex {
-                if let Some(code) = status.code() {
-                    std::process::exit(code);
-                }
-            }
-            std::process::exit(EX_OSERR);
-        } else {
-            exec(command, args);
-        }
-    }
+    // If Linkerd shutdown is not configured, exec the process directly so that
+    // the we don't have to bother with signal proxying, etc.
+    exec(cmd, args);
 }
 
-const EX_OSERR: i32 = 71;
+fn linkerd_disabled_reason() -> Option<String> {
+    std::env::var("LINKERD_DISABLED")
+        .ok()
+        .filter(|v| !v.is_empty())
+}
 
-fn exec(name: String, args: impl IntoIterator<Item = String>) {
+/// Execs the process.
+fn exec(name: String, args: Vec<String>) {
     use std::{
         os::unix::process::CommandExt,
         process::{self, Command},
@@ -93,15 +107,18 @@ fn exec(name: String, args: impl IntoIterator<Item = String>) {
     cmd.args(args);
 
     let err = cmd.exec();
+
+    // If the command could not be executed, just exit with an OS error.
     eprintln!("Failed to exec child program: {}: {}", name, err);
     process::exit(EX_OSERR);
 }
 
-#[allow(warnings)]
-async fn fork_and_wait(
-    name: String,
-    args: impl IntoIterator<Item = String>,
-) -> std::io::Result<std::process::ExitStatus> {
+/// Forks the specified process, proxying SIGTERM.
+async fn fork_with_sigterm(name: String, args: Vec<String>) -> io::Result<ExitStatus> {
+    use nix::{
+        sys::signal::{kill, Signal::SIGTERM},
+        unistd::Pid,
+    };
     use tokio::{
         process::Command,
         signal::unix::{signal, SignalKind},
@@ -118,21 +135,25 @@ async fn fork_and_wait(
         }
     };
 
-    if let Some(id) = child.id() {
-        // Proxy relevant signals.
-        let cid = nix::unistd::Pid::from_raw(id.try_into().expect("Invalid PID"));
-        tokio::spawn(async move {
-            // SIGTERM - Kubernetes sends this to start a graceful shutdown.
-            let mut sigterm =
-                signal(SignalKind::terminate()).expect("Failed to register signal handler");
-            sigterm.recv().await;
-            if let Err(e) = nix::sys::signal::kill(cid, nix::sys::signal::Signal::SIGTERM) {
-                eprintln!("Failed to forward SIGTERM to child process: {}", e);
-            }
-        });
-    }
+    // If the process is running, wait until we receive a SIGTERM, which kubelet
+    // uses to initiate graceful shutdown.
+    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
 
-    child.wait().await
+    // Wait for the process to exit on its own or, if a SIGTERM is received,
+    // proxy the signal so it begins shutdown.
+    tokio::select! {
+        ex = child.wait() => ex,
+        _ = sigterm.recv() => {
+            if let Some(pid) = child.id() {
+                // If the child hasn't already completed, send a SIGTERM.
+                if let Err(e) = kill(Pid::from_raw(pid.try_into().expect("Invalid PID")), SIGTERM) {
+                    eprintln!("Failed to forward SIGTERM to child process: {}", e);
+                }
+            }
+            // Wait to get the child's exit code.
+            child.wait().await
+        }
+    }
 }
 
 async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {

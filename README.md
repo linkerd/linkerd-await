@@ -5,9 +5,8 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.1.3
-Oliver Gould <ver@buoyant.io>
-Wait for linkerd to become ready before running a program.
+linkerd-await 0.2.0
+Wait for linkerd to become ready before running a program
 
 USAGE:
     linkerd-await [OPTIONS] [CMD]...
@@ -17,8 +16,8 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -b, --backoff <backoff>     [default: 1s]
-    -u, --uri <uri>             [default: http://127.0.0.1:4191/ready]
+    -b, --backoff <backoff>    Time to wait after a failed readiness check [default: 1s]
+    -p, --port <port>          The port of the local Linkerd proxy admin server [default: 4191]
 
 ARGS:
     <CMD>...
@@ -45,27 +44,19 @@ In a multi-stage build, `linkerd-await` can be downloaded in a previous stage as
 
 ```dockerfile
 FROM node:alpine as builder
-
 WORKDIR /app
-
 RUN apk add --update curl && rm -rf /var/cache/apk/*
-
 COPY package*.json ./
 RUN npm install --production
 COPY . .
-
-ARG LINKERD_AWAIT_VERSION=v0.1.3
+ARG LINKERD_AWAIT_VERSION=v0.2.0
 RUN curl -vsLO https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await && \
   chmod +x linkerd-await
 
 FROM node:alpine
-
 WORKDIR /app
-
 COPY --from=builder /app .
-
 USER 10001
-
 ENTRYPOINT ["./linkerd-await", "--"]
 CMD  ["node", "index.js"]
 ```

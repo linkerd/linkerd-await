@@ -56,7 +56,7 @@ async fn main() {
         .ok()
         .filter(|v| !v.is_empty());
     match disabled_reason {
-        Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
+        Some(ref reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
         None => {
             await_ready(authority.clone(), backoff).await;
         }
@@ -65,9 +65,11 @@ async fn main() {
     let mut args = cmd.into_iter();
     if let Some(command) = args.next() {
         if shutdown {
-            let res = fork_and_wait(command, args).await;
-            send_shutdown(authority).await;
-            if let Ok(status) = res {
+            let ex = fork_and_wait(command, args).await;
+            if disabled_reason.is_none() {
+                send_shutdown(authority).await;
+            }
+            if let Ok(status) = ex {
                 if let Some(code) = status.code() {
                     std::process::exit(code);
                 }

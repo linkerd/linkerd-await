@@ -151,6 +151,8 @@ async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitSta
 }
 
 async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
+    const TIMEOUT: time::Duration = time::Duration::from_secs(5);
+
     let uri = hyper::Uri::builder()
         .scheme(http::uri::Scheme::HTTP)
         .authority(auth)
@@ -160,8 +162,8 @@ async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
 
     let client = hyper::Client::default();
     loop {
-        match client.get(uri.clone()).await {
-            Ok(ref rsp) if rsp.status().is_success() => return,
+        match time::timeout(TIMEOUT, client.get(uri.clone())).await {
+            Ok(Ok(ref rsp)) if rsp.status().is_success() => return,
             _ => time::sleep(backoff).await,
         }
     }

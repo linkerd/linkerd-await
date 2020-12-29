@@ -1,9 +1,8 @@
 #![deny(warnings, rust_2018_idioms)]
 
-use std::time::Duration;
 use std::{error, fmt};
 use structopt::StructOpt;
-use tokio::time::delay_for;
+use tokio::time;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt()]
@@ -14,7 +13,7 @@ struct Opt {
         long = "uri",
         default_value = "http://127.0.0.1:4191/ready"
     )]
-    uri: http::Uri,
+    uri: hyper::Uri,
 
     #[structopt(
         short = "b",
@@ -22,13 +21,13 @@ struct Opt {
         default_value = "1s",
         parse(try_from_str = parse_duration)
     )]
-    backoff: Duration,
+    backoff: time::Duration,
 
     #[structopt(name = "CMD")]
     cmd: Vec<String>,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     use std::os::unix::process::CommandExt;
     use std::process::{self, Command};
@@ -56,18 +55,19 @@ async fn main() {
     }
 }
 
-async fn await_ready(uri: http::Uri, backoff: Duration) {
+async fn await_ready(uri: hyper::Uri, backoff: time::Duration) {
     let client = hyper::Client::default();
     loop {
         match client.get(uri.clone()).await {
             Ok(ref rsp) if rsp.status().is_success() => return,
-            _ => delay_for(backoff).await,
+            _ => time::sleep(backoff).await,
         }
     }
 }
 
-fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
+fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
     use regex::Regex;
+    use time::Duration;
 
     let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
     let cap = re.captures(s).ok_or(InvalidDuration)?;

@@ -12,8 +12,9 @@ USAGE:
     linkerd-await [OPTIONS] [CMD]...
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -h, --help        Prints help information
+    -S, --shutdown    Forks the program and triggers proxy shutdown on completion
+    -V, --version     Prints version information
 
 OPTIONS:
     -b, --backoff <backoff>    Time to wait after a failed readiness check [default: 1s]

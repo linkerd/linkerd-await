@@ -29,7 +29,7 @@ struct Opt {
     #[structopt(
         short = "S",
         long = "shutdown",
-        help = "Causes the program to be forked so that proxy shutdown can be triggered once it completes"
+        help = "Forks the program and triggers proxy shutdown on completion"
     )]
     shutdown: bool,
 

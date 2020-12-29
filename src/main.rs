@@ -46,7 +46,7 @@ async fn main() {
         cmd,
     } = Opt::from_args();
 
-    let authority = http::uri::Authority::from_str(&format!("127.0.0.1:{}", port)).unwrap();
+    let authority = http::uri::Authority::from_str(&format!("localhost:{}", port)).unwrap();
 
     if cmd.is_empty() {
         std::process::exit(0);

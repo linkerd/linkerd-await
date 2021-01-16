@@ -8,9 +8,36 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-18.04
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.37-buster
+      image: docker://rust:1.49-buster
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: make check-fmt check
+
+  audit:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        checks:
+          - advisories
+          - bans licenses sources
+    # Prevent sudden announcement of a new advisory from failing Ci.
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: EmbarkStudios/cargo-deny-action@v1
+      with:
+        command: check ${{ matrix.checks }}
+
+  clippy:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    container:
+      image: docker://rust:1.49.0-buster
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - run: cargo clippy --all-targets --all-features

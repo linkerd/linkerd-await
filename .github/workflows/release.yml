@@ -18,7 +18,7 @@ jobs:
         git-ref: ${{ github.ref }}
 
     - name: Build
-      uses: docker://rust:1.47-buster
+      uses: docker://rust:1.50-buster
       env:
         CARGO_RELEASE: 1
       with:

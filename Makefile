@@ -63,6 +63,6 @@ build: $(TARGET_BIN)
 .PHONY: release
 release: $(TARGET_BIN)
 	@mkdir -p release
-	cp $(TARGET_BIN) release/linkerd-await-$(ARCH)
-	$(STRIP) release/linkerd-await-$(ARCH)
-	$(SHASUM) release/linkerd-await-$(ARCH) >release/linkerd-await-$(ARCH).shasum
+	cp $(TARGET_BIN) release/$(PKG_NAME)
+	$(STRIP) release/$(PKG_NAME)
+	$(SHASUM) release/$(PKG_NAME) >release/$(PKG_NAME).shasum

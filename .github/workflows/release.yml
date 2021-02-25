@@ -45,6 +45,7 @@ jobs:
           CARGO_TARGET: ${{ matrix.target }}
           STRIP: ${{ matrix.strip }}
           ARCH: ${{ matrix.architecture }}
+          RUST_BACKTRACE: 1
         uses: ./.github/actions/package
         with:
           entrypoint: make

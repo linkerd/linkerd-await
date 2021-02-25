@@ -11,7 +11,7 @@ ARCH ?= amd64
 STRIP ?= strip
 
 PKG_ROOT = $(TARGET)/package
-PKG_NAME = linkerd2-await-$(PACKAGE_VERSION)-$(ARCH)
+PKG_NAME = linkerd-await-$(PACKAGE_VERSION)-$(ARCH)
 PKG_BASE = $(PKG_ROOT)/$(PKG_NAME)
 
 SHASUM = shasum -a 256

@@ -3,82 +3,33 @@ name: Release
 on:
   push:
     tags:
-      - 'release/*'
+    - 'release/*'
 
 jobs:
-  package:
-    strategy:
-      matrix:
-        architecture: [amd64, arm64, arm]
-        include:
-          - architecture: amd64
-            target: x86_64-unknown-linux-gnu
-            strip: strip
-          - architecture: arm64
-            target: aarch64-unknown-linux-gnu
-            strip: aarch64-linux-gnu-strip
-          - architecture: arm
-            target: armv7-unknown-linux-gnueabihf
-            strip: arm-linux-gnueabihf-strip
-    name: Package (${{ matrix.architecture }})
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
     steps:
-      - name: git co
-        uses: actions/checkout@v2
+    - uses: actions/checkout@v1
 
-      - name: meta
-        id: release-tag-meta
-        uses: ./.github/actions/release-tag-meta
-        with:
-          git-ref: ${{ github.ref }}
-      #- run: echo "${{ toJSON(steps.release-tag-meta) }}"
+    - name: Get Tag Info
+      id: release-tag-meta
+      uses: ./.github/actions/release-tag-meta
+      with:
+        git-ref: ${{ github.ref }}
 
-      - name: package
-        env:
-          CARGO_RELEASE: "1"
-          PACKAGE_VERSION: ${{ steps.release-tag-meta.outputs.name }}
-          CARGO_TARGET: ${{ matrix.target }}
-          STRIP: ${{ matrix.strip }}
-          ARCH: ${{ matrix.architecture }}
-        uses: ./.github/actions/package
-        with:
-          entrypoint: make
-          args: release
+    - name: Build
+      uses: docker://rust:1.50-buster
+      env:
+        CARGO_RELEASE: 1
+      with:
+        entrypoint: make
+        args: release
 
-      - name: upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.architecture }}-artifacts
-          path: release/*
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: release/*
+        name: ${{ steps.release-tag-meta.outputs.name }}
 
-  release:
-    needs: [package]
-    name: GitHub Release
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: git co
-        uses: actions/checkout@v2
-
-      - name: meta
-        id: release-tag-meta
-        uses: ./.github/actions/release-tag-meta
-        with:
-          git-ref: ${{ github.ref }}
-
-      - name: download artifacts
-        uses: actions/download-artifact@v2
-        with:
-          path: artifacts
-
-      - name: list artifacts
-        run: find artifacts -type f -ls
-
-      - name: release
-        uses: softprops/action-gh-release@affa18ef97bc9db20076945705aba8c516139abd
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: ${{ steps.release-tag-meta.outputs.name }}
-          files: artifacts/**/*

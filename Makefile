@@ -1,33 +1,26 @@
-RUSTUP ?= rustup
-CARGO_TARGET ?= $(shell $(RUSTUP) show |sed -n 's/^Default host: \(.*\)/\1/p')
-TARGET_DIR = target/$(CARGO_TARGET)/debug
+TARGET ?= x86_64-unknown-linux-musl
+TARGET_DIR = target/$(TARGET)/debug
 ifdef CARGO_RELEASE
 	RELEASE = --release
-	TARGET_DIR = target/$(CARGO_TARGET)/release
+	TARGET_DIR = target/$(TARGET)/release
 endif
 TARGET_BIN = $(TARGET_DIR)/linkerd-await
 
-ARCH ?= amd64
-STRIP ?= strip
-
-PKG_ROOT = $(TARGET)/package
-PKG_NAME = linkerd2-await-$(PACKAGE_VERSION)-$(ARCH)
-PKG_BASE = $(PKG_ROOT)/$(PKG_NAME)
+RUSTUP ?= rustup
+CARGO ?= cargo
+CARGO_BUILD = $(CARGO) build --frozen --target=$(TARGET) $(RELEASE)
+CARGO_CHECK = $(CARGO) check --all --frozen --target=$(TARGET) $(RELEASE)
+CARGO_TEST = $(CARGO) test --all --frozen --target=$(TARGET) $(RELEASE)
+CARGO_FMT = $(CARGO) fmt --all
 
 SHASUM = shasum -a 256
-
-CARGO ?= cargo
-CARGO_BUILD = $(CARGO) build --frozen --target=$(CARGO_TARGET) $(RELEASE)
-CARGO_CHECK = $(CARGO) check --all --frozen --target=$(CARGO_TARGET) $(RELEASE)
-CARGO_TEST = $(CARGO) test --all --frozen --target=$(CARGO_TARGET) $(RELEASE)
-CARGO_FMT = $(CARGO) fmt --all
 
 .PHONY: all
 all: check-fmt check
 
 .PHONY: configure-target
 configure-target:
-	$(RUSTUP) target add $(CARGO_TARGET)
+	$(RUSTUP) target add $(TARGET)
 
 .PHONY: configure-fmt
 configure-fmt:
@@ -60,9 +53,8 @@ fmt: configure-fmt
 .PHONY: build
 build: $(TARGET_BIN)
 
-.PHONY: release
 release: $(TARGET_BIN)
-	@mkdir -p release
-	cp $(TARGET_BIN) release/linkerd-await-$(ARCH)
-	$(STRIP) release/linkerd-await-$(ARCH)
-	$(SHASUM) release/linkerd-await-$(ARCH) >release/linkerd-await-$(ARCH).shasum
+	@rm -rf release && mkdir release
+	cp $(TARGET_BIN) release/linkerd-await
+	strip release/linkerd-await
+	$(SHASUM) release/linkerd-await >release/linkerd-await.shasum

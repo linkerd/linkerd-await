@@ -4,7 +4,7 @@ WORKDIR /linkerd
 
 RUN apt-get update && \
     apt-get install -y jq && \
-    apt-get install -y musl-tools && \
+    apt-get install -y musl-tools docker.io && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/
 
 RUN cargo install cross

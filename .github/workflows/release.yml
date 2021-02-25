@@ -40,6 +40,7 @@ jobs:
         env:
           CARGO: cross
           CARGO_RELEASE: "1"
+          CROSS_DOCKER_IN_DOCKER: true
           PACKAGE_VERSION: ${{ steps.release-tag-meta.outputs.name }}
           CARGO_TARGET: ${{ matrix.target }}
           STRIP: ${{ matrix.strip }}

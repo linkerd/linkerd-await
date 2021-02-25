@@ -31,9 +31,7 @@ multiple-versions = "deny"
 wildcards = "deny"
 highlight = "all"
 deny = []
-skip = [
-    { name = "cfg-if" },
-]
+skip = []
 skip-tree = []
 
 [sources]

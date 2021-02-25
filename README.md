@@ -5,7 +5,7 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.2.0
+linkerd-await 0.2.1
 Wait for linkerd to become ready before running a program
 
 USAGE:
@@ -31,8 +31,8 @@ ARGS:
 ```dockerfile
 # Create a base layer with linkerd-await froma recent release.
 FROM docker.io/curlimages/curl:latest as linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.0
-RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await
+ARG LINKERD_AWAIT_VERSION=v0.2.1
+RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-amd64
 RUN chmod 755 /tmp/linkerd-await
 
 # Build your application with whatever environment makes sense.

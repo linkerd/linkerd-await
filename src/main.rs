@@ -91,9 +91,14 @@ async fn main() {
 }
 
 fn linkerd_disabled_reason() -> Option<String> {
-    std::env::var("LINKERD_DISABLED")
+    std::env::var("LINKERD_AWAIT_DISABLED")
         .ok()
         .filter(|v| !v.is_empty())
+        .or_else(|| {
+            std::env::var("LINKERD_DISABLED")
+                .ok()
+                .filter(|v| !v.is_empty())
+        })
 }
 
 /// Execs the process.

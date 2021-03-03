@@ -54,9 +54,10 @@ CMD  ["/myapp"]
 
 ### Disabling `linkerd-await` at runtime
 
-Note that the `LINKERD_DISABLED` flag can be set to bypass `linkerd-await`'s
-readiness checks. This way, `linkerd-await` may be controlled by overriding a
-default environment variable:
+The `LINKERD_AWAIT_DISABLED` (or `LINKERD_DISABLED`) environment variable can
+be set to bypass `linkerd-await`'s readiness checks. This way,
+`linkerd-await` may be controlled by overriding a default environment
+variable:
 
 ```yaml
     # ...
@@ -64,7 +65,7 @@ default environment variable:
       containers:
         - name: myapp
           env:
-            - name: LINKERD_DISABLED
+            - name: LINKERD_AWAIT_DISABLED
               value: "Linkerd is disabled ;("
           # ...
 ```

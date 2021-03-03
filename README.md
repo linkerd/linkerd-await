@@ -29,11 +29,11 @@ ARGS:
 ### Dockerfile
 
 ```dockerfile
-# Create a base layer with linkerd-await froma recent release.
+# Create a base layer with linkerd-await from a recent release.
 FROM docker.io/curlimages/curl:latest as linkerd
 ARG LINKERD_AWAIT_VERSION=v0.2.2
-RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64
-RUN chmod 755 /tmp/linkerd-await
+RUN curl -sSLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
+    chmod 755 /tmp/linkerd-await
 
 # Build your application with whatever environment makes sense.
 FROM myapp-build as app
@@ -41,7 +41,7 @@ WORKDIR /app
 RUN make build
 
 # Package the application wrapped by linkerd-await. Note that the binary is
-# static so it can be used on `scratch` images:
+# static so it can be used in `scratch` images:
 FROM scratch
 COPY --from=linkerd /tmp/linkerd-await /linkerd-await
 COPY --from=app /app/myapp /myapp
@@ -72,7 +72,7 @@ variable:
 
 ## License
 
-linkerd-await is copyright 2019 the Linkerd authors. All rights reserved.
+linkerd-await is copyright 2021 the Linkerd authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the

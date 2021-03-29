@@ -33,10 +33,10 @@ struct Opt {
     )]
     shutdown: bool,
 
-    #[structopt(name = "CMD")]
-    cmd: String,
+    #[structopt(name = "CMD", help = "The command to run after linkerd is ready")]
+    cmd: Option<String>,
 
-    #[structopt(name = "ARGS")]
+    #[structopt(name = "ARGS", help = "Arguments to pass to CMD if specified")]
     args: Vec<String>,
 }
 
@@ -64,30 +64,39 @@ async fn main() {
             await_ready(authority.clone(), backoff).await;
 
             if shutdown {
-                // If shutdown is configured, fork the process and proxy SIGTERM.
-                let ex = fork_with_sigterm(cmd, args).await;
+                let ex = if let Some(c) = cmd {
+                    // If shutdown is configured, fork the process and proxy
+                    // SIGTERM.
+                    Some(fork_with_sigterm(c, args).await)
+                } else {
+                    None
+                };
 
-                // Once the process completes, issue a shutdown request to the
-                // proxy.
                 send_shutdown(authority).await;
 
-                // Try to exit with the process's original exit code
-                if let Ok(status) = ex {
-                    if let Some(code) = status.code() {
-                        std::process::exit(code);
+                if let Some(ex) = ex {
+                    // Try to exit with the process's original exit code
+                    if let Ok(status) = ex {
+                        if let Some(code) = status.code() {
+                            std::process::exit(code);
+                        }
                     }
+
+                    // If we didn't get an exit code from the forked program,
+                    // fail with an OS error.
+                    std::process::exit(EX_OSERR);
                 }
 
-                // If we didn't get an exit code from the forked program, fail
-                // with an OS error.
-                std::process::exit(EX_OSERR);
+                return;
             }
         }
     }
 
-    // If Linkerd shutdown is not configured, exec the process directly so that
-    // the we don't have to bother with signal proxying, etc.
-    exec(cmd, args);
+    if let Some(cmd) = cmd {
+        // If Linkerd shutdown is not configured, exec the process directly so
+        // that the we don't have to bother with signal proxying, etc.
+        exec(cmd, args);
+    }
 }
 
 fn linkerd_disabled_reason() -> Option<String> {

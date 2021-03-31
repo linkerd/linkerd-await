@@ -29,14 +29,15 @@ struct Opt {
     #[structopt(
         short = "S",
         long = "shutdown",
-        help = "Forks the program and triggers proxy shutdown on completion"
+        help = "Forks the program and triggers proxy shutdown on completion",
+        requires("CMD")
     )]
     shutdown: bool,
 
-    #[structopt(name = "CMD")]
-    cmd: String,
+    #[structopt(name = "CMD", help = "The command to run after linkerd is ready")]
+    cmd: Option<String>,
 
-    #[structopt(name = "ARGS")]
+    #[structopt(name = "ARGS", help = "Arguments to pass to CMD if specified")]
     args: Vec<String>,
 }
 
@@ -64,7 +65,10 @@ async fn main() {
             await_ready(authority.clone(), backoff).await;
 
             if shutdown {
-                // If shutdown is configured, fork the process and proxy SIGTERM.
+                let cmd = cmd.expect("Command must be specified with --shutdown");
+
+                // If shutdown is configured, fork the process and proxy
+                // SIGTERM.
                 let ex = fork_with_sigterm(cmd, args).await;
 
                 // Once the process completes, issue a shutdown request to the
@@ -85,9 +89,11 @@ async fn main() {
         }
     }
 
-    // If Linkerd shutdown is not configured, exec the process directly so that
-    // the we don't have to bother with signal proxying, etc.
-    exec(cmd, args);
+    if let Some(cmd) = cmd {
+        // If Linkerd shutdown is not configured, exec the process directly so
+        // that the we don't have to bother with signal proxying, etc.
+        exec(cmd, args);
+    }
 }
 
 fn linkerd_disabled_reason() -> Option<String> {

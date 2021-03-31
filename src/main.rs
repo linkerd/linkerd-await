@@ -29,7 +29,8 @@ struct Opt {
     #[structopt(
         short = "S",
         long = "shutdown",
-        help = "Forks the program and triggers proxy shutdown on completion"
+        help = "Forks the program and triggers proxy shutdown on completion",
+        requires("CMD")
     )]
     shutdown: bool,
 
@@ -64,30 +65,26 @@ async fn main() {
             await_ready(authority.clone(), backoff).await;
 
             if shutdown {
-                let ex = if let Some(c) = cmd {
-                    // If shutdown is configured, fork the process and proxy
-                    // SIGTERM.
-                    Some(fork_with_sigterm(c, args).await)
-                } else {
-                    None
-                };
+                let cmd = cmd.expect("Command must be specified with --shutdown");
 
+                // If shutdown is configured, fork the process and proxy
+                // SIGTERM.
+                let ex = fork_with_sigterm(cmd, args).await;
+
+                // Once the process completes, issue a shutdown request to the
+                // proxy.
                 send_shutdown(authority).await;
 
-                if let Some(ex) = ex {
-                    // Try to exit with the process's original exit code
-                    if let Ok(status) = ex {
-                        if let Some(code) = status.code() {
-                            std::process::exit(code);
-                        }
+                // Try to exit with the process's original exit code
+                if let Ok(status) = ex {
+                    if let Some(code) = status.code() {
+                        std::process::exit(code);
                     }
-
-                    // If we didn't get an exit code from the forked program,
-                    // fail with an OS error.
-                    std::process::exit(EX_OSERR);
                 }
 
-                return;
+                // If we didn't get an exit code from the forked program, fail
+                // with an OS error.
+                std::process::exit(EX_OSERR);
             }
         }
     }

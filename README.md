@@ -5,7 +5,7 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 ## Usage
 
 ```
-linkerd-await 0.2.3
+linkerd-await 0.2.4
 Wait for linkerd to become ready before running a program
 
 USAGE:
@@ -19,6 +19,8 @@ FLAGS:
 OPTIONS:
     -b, --backoff <backoff>    Time to wait after a failed readiness check [default: 1s]
     -p, --port <port>          The port of the local Linkerd proxy admin server [default: 4191]
+    -v, --verbose <verbose>    Causes linkerd-await to print an error message when disabled [env:
+                               LINKERD_AWAIT_VERBOSE=]
 
 ARGS:
     <CMD>        The command to run after linkerd is ready
@@ -32,7 +34,7 @@ ARGS:
 ```dockerfile
 # Create a base layer with linkerd-await from a recent release.
 FROM docker.io/curlimages/curl:latest as linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.3
+ARG LINKERD_AWAIT_VERSION=v0.2.4
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
     chmod 755 /tmp/linkerd-await
 

@@ -34,6 +34,14 @@ struct Opt {
     )]
     shutdown: bool,
 
+    #[structopt(
+        short = "v",
+        long = "verbose",
+        help = "Causes linkerd-await to print an error message when disabled",
+        env = "LINKERD_AWAIT_VERBOSE"
+    )]
+    verbose: bool,
+
     #[structopt(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
 
@@ -50,6 +58,7 @@ async fn main() {
         port,
         backoff,
         shutdown,
+        verbose,
         cmd,
         args,
     } = Opt::from_args();
@@ -60,7 +69,11 @@ async fn main() {
     // If linkerd is not explicitly disabled, wait until the proxy is ready
     // before running the application.
     match linkerd_disabled_reason() {
-        Some(reason) => eprintln!("Linkerd readiness check skipped: {}", reason),
+        Some(reason) => {
+            if verbose {
+                eprintln!("Linkerd readiness check skipped: {}", reason);
+            }
+        }
         None => {
             await_ready(authority.clone(), backoff).await;
 

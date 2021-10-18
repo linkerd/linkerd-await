@@ -10,7 +10,7 @@ jobs:
     container:
       image: docker://rust:1.53-buster
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - run: make check-fmt check
 
   audit:
@@ -24,7 +24,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - uses: EmbarkStudios/cargo-deny-action@0ca727bbae7b7b578b9a5f98186caac35aa2a00d
         with:
           command: check ${{ matrix.checks }}
@@ -35,6 +35,6 @@ jobs:
     container:
       image: docker://rust:1.53-buster
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - run: rustup component add clippy
       - run: cargo clippy --all-targets --all-features

@@ -1,24 +1,24 @@
 #![deny(warnings, rust_2018_idioms)]
 
+use clap::Parser;
 use regex::Regex;
 use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
-use structopt::StructOpt;
 use tokio::time;
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt()]
+#[derive(Clone, Debug, Parser)]
+#[clap(about, version)]
 /// Wait for linkerd to become ready before running a program.
-struct Opt {
-    #[structopt(
-        short = "p",
+struct Args {
+    #[clap(
+        short = 'p',
         long = "port",
         default_value = "4191",
         help = "The port of the local Linkerd proxy admin server"
     )]
     port: u16,
 
-    #[structopt(
-        short = "b",
+    #[clap(
+        short = 'b',
         long = "backoff",
         default_value = "1s",
         parse(try_from_str = parse_duration),
@@ -26,26 +26,26 @@ struct Opt {
     )]
     backoff: time::Duration,
 
-    #[structopt(
-        short = "S",
+    #[clap(
+        short = 'S',
         long = "shutdown",
         help = "Forks the program and triggers proxy shutdown on completion",
         requires("CMD")
     )]
     shutdown: bool,
 
-    #[structopt(
-        short = "v",
+    #[clap(
+        short = 'v',
         long = "verbose",
         help = "Causes linkerd-await to print an error message when disabled",
         env = "LINKERD_AWAIT_VERBOSE"
     )]
     verbose: bool,
 
-    #[structopt(name = "CMD", help = "The command to run after linkerd is ready")]
+    #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
 
-    #[structopt(name = "ARGS", help = "Arguments to pass to CMD if specified")]
+    #[clap(name = "ARGS", help = "Arguments to pass to CMD if specified")]
     args: Vec<String>,
 }
 
@@ -54,14 +54,14 @@ const EX_OSERR: i32 = 71;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let Opt {
+    let Args {
         port,
         backoff,
         shutdown,
         verbose,
         cmd,
         args,
-    } = Opt::from_args();
+    } = Args::parse();
 
     let authority = http::uri::Authority::from_str(&format!("localhost:{}", port))
         .expect("HTTP authority must be valid");

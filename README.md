@@ -4,27 +4,25 @@ A command-wrapper that polls Linkerd for readiness until it becomes ready and on
 
 ## Usage
 
-```
+```text
 linkerd-await 0.2.4
 Wait for linkerd to become ready before running a program
 
 USAGE:
-    linkerd-await [FLAGS] [OPTIONS] [ARGS]
-
-FLAGS:
-    -h, --help        Prints help information
-    -S, --shutdown    Forks the program and triggers proxy shutdown on completion
-    -V, --version     Prints version information
-
-OPTIONS:
-    -b, --backoff <backoff>    Time to wait after a failed readiness check [default: 1s]
-    -p, --port <port>          The port of the local Linkerd proxy admin server [default: 4191]
-    -v, --verbose <verbose>    Causes linkerd-await to print an error message when disabled [env:
-                               LINKERD_AWAIT_VERBOSE=]
+    linkerd-await [OPTIONS] [ARGS]
 
 ARGS:
     <CMD>        The command to run after linkerd is ready
     <ARGS>...    Arguments to pass to CMD if specified
+
+OPTIONS:
+    -b, --backoff <BACKOFF>    Time to wait after a failed readiness check [default: 1s]
+    -h, --help                 Print help information
+    -p, --port <PORT>          The port of the local Linkerd proxy admin server [default: 4191]
+    -S, --shutdown             Forks the program and triggers proxy shutdown on completion
+    -v, --verbose              Causes linkerd-await to print an error message when disabled [env:
+                               LINKERD_AWAIT_VERBOSE=]
+    -V, --version              Print version information
 ```
 
 ## Examples

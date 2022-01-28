@@ -42,6 +42,14 @@ struct Args {
     )]
     verbose: bool,
 
+    #[clap(
+        short = 't',
+        long = "timeout",
+        parse(try_from_str = parse_duration),
+        help = "Causes linked-await to print an error message when the proxy fails to become ready before the timeout has elapsed"
+    )]
+    timeout: time::Duration,
+
     #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
 
@@ -59,6 +67,7 @@ async fn main() {
         backoff,
         shutdown,
         verbose,
+        timeout,
         cmd,
         args,
     } = Args::parse();
@@ -75,7 +84,13 @@ async fn main() {
             }
         }
         None => {
-            await_ready(authority.clone(), backoff).await;
+            let ready = await_ready(authority.clone(), backoff);
+            if let Err(_) = tokio::time::timeout(timeout, ready).await {
+                eprintln!(
+                    "linkerd-proxy failed to become ready within {:?} timeout",
+                    timeout
+                );
+            }
 
             if shutdown {
                 let cmd = cmd.expect("Command must be specified with --shutdown");

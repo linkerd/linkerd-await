@@ -85,7 +85,7 @@ async fn main() {
         }
         None => {
             let ready = await_ready(authority.clone(), backoff);
-            if let Err(_) = tokio::time::timeout(timeout, ready).await {
+            if tokio::time::timeout(timeout, ready).await.is_err() {
                 eprintln!(
                     "linkerd-proxy failed to become ready within {:?} timeout",
                     timeout

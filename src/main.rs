@@ -5,6 +5,8 @@ use regex::Regex;
 use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use tokio::time;
 
+// #[derive(Clone, Debug)]
+// struct Timeout(time::Duration);
 #[derive(Clone, Debug, Parser)]
 #[clap(about, version)]
 /// Wait for linkerd to become ready before running a program.
@@ -45,10 +47,10 @@ struct Args {
     #[clap(
         short = 't',
         long = "timeout",
-        parse(try_from_str = parse_duration),
+        parse(try_from_str = parse_timeout),
         help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
     )]
-    timeout: time::Duration,
+    timeout: Option<time::Duration>,
 
     #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
@@ -86,12 +88,14 @@ async fn main() {
         }
         None => {
             let ready = await_ready(authority.clone(), backoff);
-            if tokio::time::timeout(timeout, ready).await.is_err() {
-                eprintln!(
-                    "linkerd-proxy failed to become ready within {:?} timeout",
-                    timeout
-                );
-                std::process::exit(EX_UNAVAILABLE)
+            if let Some(timeout) = timeout {
+                if tokio::time::timeout(timeout, ready).await.is_err() {
+                    eprintln!(
+                        "linkerd-proxy failed to become ready within {:?} timeout",
+                        timeout
+                    );
+                    std::process::exit(EX_UNAVAILABLE)
+                }
             }
 
             if shutdown {
@@ -241,6 +245,14 @@ fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
         Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
         _ => Err(InvalidDuration),
     }
+}
+
+fn parse_timeout(s: &str) -> Result<Option<time::Duration>, InvalidDuration> {
+    let duration = parse_duration(s)?;
+    if duration.as_secs() == 0 {
+        return Ok(None);
+    }
+    Ok(Some(duration))
 }
 
 #[derive(Copy, Clone, Debug)]

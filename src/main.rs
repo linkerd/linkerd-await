@@ -5,8 +5,6 @@ use regex::Regex;
 use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use tokio::time;
 
-// #[derive(Clone, Debug)]
-// struct Timeout(time::Duration);
 #[derive(Clone, Debug, Parser)]
 #[clap(about, version)]
 /// Wait for linkerd to become ready before running a program.

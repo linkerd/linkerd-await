@@ -46,7 +46,7 @@ struct Args {
         short = 't',
         long = "timeout",
         parse(try_from_str = parse_duration),
-        help = "Causes linked-await to print an error message when the proxy fails to become ready before the timeout has elapsed"
+        help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
     )]
     timeout: time::Duration,
 
@@ -59,6 +59,7 @@ struct Args {
 
 // From https://man.netbsd.org/sysexits.3
 const EX_OSERR: i32 = 71;
+const EX_UNAVAILABLE: i32 = 69;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -90,6 +91,7 @@ async fn main() {
                     "linkerd-proxy failed to become ready within {:?} timeout",
                     timeout
                 );
+                std::process::exit(EX_UNAVAILABLE)
             }
 
             if shutdown {

@@ -9,6 +9,7 @@ repository = "https://github.com/linkerd/linkerd-await"
 
 [dependencies]
 clap = { version = "3", default-features = false, features = ["derive", "env", "std"] }
+futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", features = ["client", "http1", "tcp"] }
 nix = "0.23"

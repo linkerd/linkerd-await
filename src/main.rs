@@ -42,6 +42,14 @@ struct Args {
     )]
     verbose: bool,
 
+    #[clap(
+        short = 't',
+        long = "timeout",
+        parse(try_from_str = parse_duration),
+        help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
+    )]
+    timeout: Option<time::Duration>,
+
     #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
 
@@ -51,6 +59,7 @@ struct Args {
 
 // From https://man.netbsd.org/sysexits.3
 const EX_OSERR: i32 = 71;
+const EX_UNAVAILABLE: i32 = 69;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -59,6 +68,7 @@ async fn main() {
         backoff,
         shutdown,
         verbose,
+        timeout,
         cmd,
         args,
     } = Args::parse();
@@ -75,8 +85,25 @@ async fn main() {
             }
         }
         None => {
-            await_ready(authority.clone(), backoff).await;
-
+            let await_timeout = async move {
+                if let Some(timeout) = timeout {
+                    if !timeout.is_zero() {
+                        tokio::time::sleep(timeout).await;
+                        return timeout;
+                    }
+                }
+                futures::future::pending().await
+            };
+            tokio::select! {
+                () = await_ready(authority.clone(), backoff) => {},
+                timeout = await_timeout => {
+                    eprintln!(
+                        "linkerd-proxy failed to become ready within {:?} timeout",
+                        timeout
+                    );
+                    std::process::exit(EX_UNAVAILABLE)
+                }
+            }
             if shutdown {
                 let cmd = cmd.expect("Command must be specified with --shutdown");
 

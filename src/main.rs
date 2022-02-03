@@ -85,19 +85,25 @@ async fn main() {
             }
         }
         None => {
-            let ready = await_ready(authority.clone(), backoff);
-            if let Some(timeout) = timeout {
-                if !timeout.is_zero() && tokio::time::timeout(timeout, ready).await.is_err() {
+            let await_timeout = async move {
+                if let Some(timeout) = timeout {
+                    if !timeout.is_zero() {
+                        tokio::time::sleep(timeout).await;
+                        return timeout;
+                    }
+                }
+                futures::future::pending().await
+            };
+            tokio::select! {
+                () = await_ready(authority.clone(), backoff) => {},
+                timeout = await_timeout => {
                     eprintln!(
                         "linkerd-proxy failed to become ready within {:?} timeout",
                         timeout
                     );
                     std::process::exit(EX_UNAVAILABLE)
                 }
-            } else {
-                ready.await;
             }
-
             if shutdown {
                 let cmd = cmd.expect("Command must be specified with --shutdown");
 

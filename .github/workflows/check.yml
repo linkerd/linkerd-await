@@ -8,7 +8,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.57-buster
+      image: docker://rust:1.58-buster
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: make check-fmt check
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.57-buster
+      image: docker://rust:1.58-buster
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add clippy

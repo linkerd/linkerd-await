@@ -1,0 +1,32 @@
+name: devcontainer
+
+# When a pull request is opened that changes the Devcontainer configuration,
+# ensure that the container continues to build properly.
+on:
+  pull_request:
+    paths:
+      - rust-toolchain
+      - .devcontainer/**
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - run: docker build .devcontainer
+
+  rust-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - run: |
+          versions=$(sed -nE 's|^ARG +RUST_VERSION=([^ #]*)|\1|p' .devcontainer/Dockerfile)
+          ex=0
+          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
+            echo "::error file=.devcontainer/Dockerfile::Devcontainer uses incorrect rust version(s): $mismatch"
+            ex=$((ex + 1))
+          done
+          exit $ex

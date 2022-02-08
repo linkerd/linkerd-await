@@ -1,0 +1,16 @@
+{
+	"name": "linkerd-await.dev",
+	"dockerFile": "Dockerfile",
+	"extensions": [
+		"DavidAnson.vscode-markdownlint",
+		"matklad.rust-analyzer",
+		"NathanRidley.autotrim",
+		"samverschueren.final-newline",
+		"streetsidesoftware.code-spell-checker",
+		"tamasfe.even-better-toml",
+	],
+	"runArgs": [
+		"--init",
+	],
+	"remoteUser": "code",
+}

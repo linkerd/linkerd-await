@@ -253,7 +253,7 @@ fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct InvalidDuration;
 
 impl fmt::Display for InvalidDuration {
@@ -263,3 +263,37 @@ impl fmt::Display for InvalidDuration {
 }
 
 impl error::Error for InvalidDuration {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_duration_invalid() {
+        assert_eq!(parse_duration(""), Err(InvalidDuration));
+        assert_eq!(parse_duration("  "), Err(InvalidDuration));
+        assert_eq!(parse_duration("\t\n"), Err(InvalidDuration));
+        assert_eq!(parse_duration("x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("1"), Err(InvalidDuration));
+        assert_eq!(parse_duration("0x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("123x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("  123x  "), Err(InvalidDuration));
+    }
+
+    #[test]
+    fn test_parse_duration_valid() {
+        use tokio::time::Duration;
+        assert_eq!(parse_duration("0"), Ok(Duration::from_secs(0)));
+        assert_eq!(parse_duration("0s"), Ok(Duration::from_secs(0)));
+        assert_eq!(parse_duration("1ms"), Ok(Duration::from_millis(1)));
+        assert_eq!(parse_duration("1s"), Ok(Duration::from_secs(1)));
+        assert_eq!(parse_duration(" \n12s  \t"), Ok(Duration::from_secs(12)));
+        assert_eq!(parse_duration("10s"), Ok(Duration::from_secs(10)));
+        assert_eq!(parse_duration("10m"), Ok(Duration::from_secs(10 * 60)));
+        assert_eq!(parse_duration("10h"), Ok(Duration::from_secs(10 * 60 * 60)));
+        assert_eq!(
+            parse_duration("10d"),
+            Ok(Duration::from_secs(10 * 60 * 60 * 24))
+        );
+    }
+}

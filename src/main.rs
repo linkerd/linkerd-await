@@ -1,7 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
 use clap::Parser;
-use regex::Regex;
 use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use tokio::time;
 
@@ -239,21 +238,28 @@ async fn send_shutdown(auth: http::uri::Authority) {
 
 fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
     use tokio::time::Duration;
-    let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
-    let cap = re.captures(s).ok_or(InvalidDuration)?;
-    let magnitude = cap[1].parse().map_err(|_| InvalidDuration)?;
-    match cap.get(2).map(|m| m.as_str()) {
-        None if magnitude == 0 => Ok(Duration::from_secs(0)),
-        Some("ms") => Ok(Duration::from_millis(magnitude)),
-        Some("s") => Ok(Duration::from_secs(magnitude)),
-        Some("m") => Ok(Duration::from_secs(magnitude * 60)),
-        Some("h") => Ok(Duration::from_secs(magnitude * 60 * 60)),
-        Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
-        _ => Err(InvalidDuration),
-    }
+    let s = s.trim();
+    let milliseconds = match s.rfind(|c: char| c.is_digit(10)) {
+        None => return Err(InvalidDuration),
+        Some(index) => {
+            let (magnitude, unit) = s.split_at(index + 1);
+            let magnitude = u64::from_str(magnitude).map_err(|_| InvalidDuration)?;
+            let multiplier = match unit {
+                "" if magnitude == 0 => 0,
+                "ms" => 1,
+                "s" => 1000,
+                "m" => 1000 * 60,
+                "h" => 1000 * 60 * 60,
+                "d" => 1000 * 60 * 60 * 24,
+                _ => return Err(InvalidDuration),
+            };
+            magnitude.checked_mul(multiplier).ok_or(InvalidDuration)?
+        }
+    };
+    Ok(Duration::from_millis(milliseconds))
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct InvalidDuration;
 
 impl fmt::Display for InvalidDuration {
@@ -263,3 +269,45 @@ impl fmt::Display for InvalidDuration {
 }
 
 impl error::Error for InvalidDuration {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_duration_invalid() {
+        assert_eq!(parse_duration(""), Err(InvalidDuration));
+        assert_eq!(parse_duration("  "), Err(InvalidDuration));
+        assert_eq!(parse_duration("\t\n"), Err(InvalidDuration));
+        assert_eq!(parse_duration("x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("1"), Err(InvalidDuration));
+        assert_eq!(parse_duration("0x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("123x"), Err(InvalidDuration));
+        assert_eq!(parse_duration("  123x  "), Err(InvalidDuration));
+        assert_eq!(
+            parse_duration(&format!("{}s", u64::MAX)),
+            Err(InvalidDuration),
+        );
+    }
+
+    #[test]
+    fn test_parse_duration_valid() {
+        use tokio::time::Duration;
+        assert_eq!(parse_duration("0"), Ok(Duration::from_secs(0)));
+        assert_eq!(parse_duration("0s"), Ok(Duration::from_secs(0)));
+        assert_eq!(parse_duration("1ms"), Ok(Duration::from_millis(1)));
+        assert_eq!(parse_duration("1s"), Ok(Duration::from_secs(1)));
+        assert_eq!(parse_duration(" \n12s  \t"), Ok(Duration::from_secs(12)));
+        assert_eq!(parse_duration("10s"), Ok(Duration::from_secs(10)));
+        assert_eq!(parse_duration("10m"), Ok(Duration::from_secs(10 * 60)));
+        assert_eq!(parse_duration("10h"), Ok(Duration::from_secs(10 * 60 * 60)));
+        assert_eq!(
+            parse_duration("10d"),
+            Ok(Duration::from_secs(10 * 60 * 60 * 24))
+        );
+        assert_eq!(
+            parse_duration(&format!("{}ms", u64::MAX)),
+            Ok(Duration::from_millis(u64::MAX)),
+        );
+    }
+}

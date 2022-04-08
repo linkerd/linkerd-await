@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=rust:1.58.0-buster
+ARG BASE_IMAGE=rust:1.60.0-buster
 FROM $BASE_IMAGE
 WORKDIR /linkerd
 

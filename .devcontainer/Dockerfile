@@ -1,4 +1,4 @@
-ARG RUST_VERSION=1.58.0
+ARG RUST_VERSION=1.60.0
 
 FROM docker.io/rust:${RUST_VERSION}-bullseye as cargo-deny
 ARG CARGO_DENY_VERSION=0.11.1

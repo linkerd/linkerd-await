@@ -225,7 +225,7 @@ checksum = "ec647867e2bf0772e28c8bcde4f0d19a9216916e890543b5a03ed8ef27b8f259"
 
 [[package]]
 name = "linkerd-await"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "clap",
  "futures",

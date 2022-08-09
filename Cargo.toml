@@ -1,6 +1,6 @@
 [package]
 name = "linkerd-await"
-version = "0.2.6"
+version = "0.2.7"
 authors = ["Linkerd Developers <cncf-linkerd-dev@lists.cncf.io>"]
 edition = "2021"
 publish = false
@@ -8,12 +8,22 @@ homepage = "https://linkerd.io"
 repository = "https://github.com/linkerd/linkerd-await"
 
 [dependencies]
-clap = { version = "3", default-features = false, features = ["derive", "env", "std"] }
+clap = { version = "3", default-features = false, features = [
+    "derive",
+    "env",
+    "std",
+] }
 futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", features = ["client", "http1", "tcp"] }
 nix = "0.24"
-tokio = { version = "1", features = ["macros", "process", "rt", "signal", "time"] }
+tokio = { version = "1", features = [
+    "macros",
+    "process",
+    "rt",
+    "signal",
+    "time",
+] }
 
 [profile.release]
 lto = true

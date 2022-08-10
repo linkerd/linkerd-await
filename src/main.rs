@@ -239,7 +239,7 @@ async fn send_shutdown(auth: http::uri::Authority) {
 fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {
     use tokio::time::Duration;
     let s = s.trim();
-    let milliseconds = match s.rfind(|c: char| c.is_digit(10)) {
+    let milliseconds = match s.rfind(|c: char| c.is_ascii_digit()) {
         None => return Err(InvalidDuration),
         Some(index) => {
             let (magnitude, unit) = s.split_at(index + 1);

@@ -1,5 +1,5 @@
 {
-	"name": "linkerd-await.dev",
+	"name": "linkerd-await",
 	"image": "ghcr.io/linkerd/dev:v24",
 	"extensions": [
 		"DavidAnson.vscode-markdownlint",

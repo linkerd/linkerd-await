@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/linkerd/dev:v24-rust
-FROM $BASE_IMAGE
+FROM ghcr.io/linkerd/dev:v25-rust
 WORKDIR /linkerd
 
 RUN apt-get update && \

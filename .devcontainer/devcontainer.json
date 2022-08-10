@@ -1,8 +1,9 @@
 {
 	"name": "linkerd-await",
-	"image": "ghcr.io/linkerd/dev:v24",
+	"image": "ghcr.io/linkerd/dev:v25",
 	"extensions": [
 		"DavidAnson.vscode-markdownlint",
+		"kokakiwi.vscode-just",
 		"NathanRidley.autotrim",
 		"rust-lang.rust-analyzer",
 		"samverschueren.final-newline",

@@ -7,8 +7,7 @@ jobs:
   check:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.60-buster
+    container: ghcr.io/linkerd/dev:v24-rust
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: make check-fmt check
@@ -32,9 +31,7 @@ jobs:
   clippy:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.60-buster
+    container: ghcr.io/linkerd/dev:v24-rust
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: rustup component add clippy
       - run: cargo clippy --all-targets --all-features

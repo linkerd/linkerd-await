@@ -1,10 +1,10 @@
 {
-	"name": "linkerd-await.dev",
-	"dockerFile": "Dockerfile",
+	"name": "linkerd-await",
+	"image": "ghcr.io/linkerd/dev:v24",
 	"extensions": [
 		"DavidAnson.vscode-markdownlint",
-		"matklad.rust-analyzer",
 		"NathanRidley.autotrim",
+		"rust-lang.rust-analyzer",
 		"samverschueren.final-newline",
 		"streetsidesoftware.code-spell-checker",
 		"tamasfe.even-better-toml",
@@ -12,5 +12,5 @@
 	"runArgs": [
 		"--init",
 	],
-	"remoteUser": "code",
+	"remoteUser": "code"
 }

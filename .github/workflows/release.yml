@@ -85,3 +85,4 @@ jobs:
         with:
           name: ${{ steps.release-tag-meta.outputs.name }}
           files: artifacts/**/*
+          generate_release_notes: true

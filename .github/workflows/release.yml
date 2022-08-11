@@ -1,88 +1,93 @@
 name: Release
 
 on:
+  pull_request:
+    paths:
+      - .github/actions/package/*
+      - .github/workflows/release.yml
+      - justfile
   push:
     tags:
       - 'release/*'
 
+permissions:
+  contents: write
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CHECKSEC_VERSION: 2.5.0
+  RUSTFLAGS: "-D warnings -A deprecated"
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
+  meta:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - id: meta
+        shell: bash
+        run: |
+          shopt -s extglob
+          ref="${{ github.ref }}"
+          if [[ "$ref" == refs/tags/release/* ]]; then
+            ver="${ref##refs/tags/release/}"
+            if [[ "$ver" != v+([0-9]).+([0-9]).+([0-9])?(-+([a-z0-9-])) ]]; then
+              echo "Invalid version: $ver" >&2
+              exit 1
+            fi
+            echo ::set-output name=publish::true
+            echo ::set-output name=version::"$ver"
+          else
+            sha="${{ github.sha }}"
+            echo ::set-output name=version::"test-${sha:0:7}"
+          fi
+    outputs:
+      publish: ${{ steps.meta.outputs.publish }}
+      version: ${{ steps.meta.outputs.version }}
+
   package:
+    needs: [meta]
     strategy:
       matrix:
-        architecture: [amd64, arm64, arm]
-        include:
-          - architecture: amd64
-            target: x86_64-unknown-linux-musl
-            strip: strip
-          - architecture: arm64
-            target: aarch64-unknown-linux-musl
-            strip: aarch64-linux-gnu-strip
-          - architecture: arm
-            target: armv7-unknown-linux-musleabihf
-            strip: arm-linux-gnueabihf-strip
-    name: Package (${{ matrix.architecture }})
+        arch: [amd64, arm64, arm]
+    name: Package (${{ matrix.arch }})
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
-      - name: git co
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-
-      - name: meta
-        id: release-tag-meta
-        uses: ./.github/actions/release-tag-meta
-        with:
-          git-ref: ${{ github.ref }}
-      #- run: echo "${{ toJSON(steps.release-tag-meta) }}"
-
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: package
+        uses: ./.github/actions/package
+        with:
+          entrypoint: just
+          args: release
         env:
           CARGO: cross
           CARGO_RELEASE: "1"
           CROSS_DOCKER_IN_DOCKER: true
-          PACKAGE_VERSION: ${{ steps.release-tag-meta.outputs.name }}
-          CARGO_TARGET: ${{ matrix.target }}
-          STRIP: ${{ matrix.strip }}
-          ARCH: ${{ matrix.architecture }}
-          RUST_BACKTRACE: 1
-        uses: ./.github/actions/package
+          PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v3
         with:
-          entrypoint: make
-          args: release
-
-      - name: upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.architecture }}-artifacts
+          name: ${{ matrix.arch }}-artifacts
           path: release/*
 
-  release:
-    needs: [package]
+  publish:
+    needs: [meta, package]
     name: GitHub Release
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: git co
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-
-      - name: meta
-        id: release-tag-meta
-        uses: ./.github/actions/release-tag-meta
-        with:
-          git-ref: ${{ github.ref }}
-
-      - name: download artifacts
-        uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           path: artifacts
-
-      - name: list artifacts
-        run: find artifacts -type f -ls
-
-      - name: release
+      - run: find artifacts -type f -ls
+      - if: needs.meta.outputs.publish == 'true'
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: ${{ steps.release-tag-meta.outputs.name }}
+          name: ${{ needs.meta.outputs.version }}
           files: artifacts/**/*
           generate_release_notes: true

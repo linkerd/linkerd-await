@@ -68,7 +68,10 @@ check-fmt:
     {{ _cargo }} fmt -- --check
 
 # Run all lints
-lint: clippy doc check-fmt actionlint actions-dev-versions
+lint: clippy doc check-fmt md-lint actionlint actions-dev-versions
+
+md-lint:
+    markdownlint-cli2 '**/*.md' '!**/node_modules' '!**/target'
 
 # Format actionlint output for Github Actions if running in CI.
 _actionlint-fmt := if env_var_or_default("GITHUB_ACTIONS", "") != "true" { "" } else {

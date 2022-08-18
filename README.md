@@ -1,6 +1,7 @@
 # linkerd-await
 
-A command-wrapper that polls Linkerd for readiness until it becomes ready and only then executes a command.
+A command-wrapper that polls Linkerd for readiness until it becomes ready and
+only then executes a command.
 
 ## Usage
 
@@ -72,3 +73,5 @@ variable:
               value: "Linkerd is disabled ;("
           # ...
 ```
+
+<!-- markdownlint-configure-file { "MD013": { "code_blocks": false } } -->

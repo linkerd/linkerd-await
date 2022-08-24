@@ -20,7 +20,9 @@ package_arch := env_var_or_default("ARCH", "amd64")
 
 # If a `package_arch` is specified, then we change the default cargo `--target`
 # to support cross-compilation. Otherwise, we use `rustup` to find the default.
-_cargo_target := if package_arch == "arm64" {
+_cargo_target := if package_arch == "amd64" {
+        "amd64-unknown-linux-gnu"
+    } else if package_arch == "arm64" {
         "aarch64-unknown-linux-gnu"
     } else if package_arch == "arm" {
         "armv7-unknown-linux-gnueabihf"

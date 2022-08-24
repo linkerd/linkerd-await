@@ -21,7 +21,7 @@ package_arch := env_var_or_default("ARCH", "amd64")
 # If a `package_arch` is specified, then we change the default cargo `--target`
 # to support cross-compilation. Otherwise, we use `rustup` to find the default.
 _cargo_target := if package_arch == "amd64" {
-        "amd64-unknown-linux-gnu"
+        "x86_64-unknown-linux-gnu"
     } else if package_arch == "arm64" {
         "aarch64-unknown-linux-gnu"
     } else if package_arch == "arm" {
@@ -88,7 +88,7 @@ actionlint:
 actions-dev-versions:
     #!/usr/bin/env bash
     set -euo pipefail
-    IMAGE=$(json5-to-json <.devcontainer/devcontainer.json |jq -r '.image')
+    IMAGE=$(j5j .devcontainer/devcontainer.json |jq -r '.image')
     check_image() {
         if [ "$1" != "$IMAGE" ]; then
             # Report all line numbers with the unexpected image.

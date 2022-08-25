@@ -1,4 +1,4 @@
-FROM ghcr.io/linkerd/dev:v29-rust
+FROM ghcr.io/linkerd/dev:v30-rust
 WORKDIR /linkerd
 
 RUN apt-get update && \

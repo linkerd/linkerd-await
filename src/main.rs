@@ -20,7 +20,7 @@ struct Args {
         short = 'b',
         long = "backoff",
         default_value = "1s",
-        parse(try_from_str = parse_duration),
+        value_parser = parse_duration,
         help = "Time to wait after a failed readiness check",
     )]
     backoff: time::Duration,
@@ -44,7 +44,7 @@ struct Args {
     #[clap(
         short = 't',
         long = "timeout",
-        parse(try_from_str = parse_duration),
+        value_parser = parse_duration,
         help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
     )]
     timeout: Option<time::Duration>,

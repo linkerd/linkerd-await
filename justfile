@@ -154,13 +154,13 @@ build:
         {{ _fmt }}
 
 release: fetch build
-    @-mkdir -p release
+    @mkdir -p release
     cp {{ _target_bin }} release/{{ _package_name }}
     {{ _strip }} release/{{ _package_name }}
     {{ _shasum }} release/{{ _package_name }} >release/{{ _package_name }}.shasum
 
 # Display the git history minus dependabot updates
 history *paths='.':
-    @-git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}
+    @git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}
 
 # vim: set ft=make :

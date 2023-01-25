@@ -166,6 +166,7 @@ async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitSta
         sys::signal::{kill, Signal::SIGTERM},
         unistd::Pid,
     };
+    use std::os::unix::process::ExitStatusExt;
     use tokio::{
         process::Command,
         signal::unix::{signal, SignalKind},
@@ -175,7 +176,7 @@ async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitSta
         Ok(child) => child,
         Err(e) => {
             eprintln!("Failed to fork child program: {}: {}", cmd, e);
-            std::process::exit(EX_OSERR);
+            return Ok(ExitStatus::from_raw(EX_OSERR));
         }
     };
 

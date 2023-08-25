@@ -15,12 +15,12 @@ jobs:
     timeout-minutes: 10
     container: ghcr.io/linkerd/dev:v32-tools
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
       - run: just actionlint
 
   devcontainer-versions:
     runs-on: ubuntu-latest
     container: ghcr.io/linkerd/dev:v32-tools
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
       - run: just actions-dev-versions

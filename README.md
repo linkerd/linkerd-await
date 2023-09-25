@@ -34,9 +34,9 @@ OPTIONS:
 
 ```dockerfile
 # Create a base layer with linkerd-await from a recent release.
-FROM docker.io/curlimages/curl:latest as linkerd
+FROM docker.io/library/alpine:3 as linkerd
 ARG LINKERD_AWAIT_VERSION=v0.2.7
-RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
+RUN wget -qO /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
     chmod 755 /tmp/linkerd-await
 
 # Build your application with whatever environment makes sense.

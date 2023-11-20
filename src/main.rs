@@ -34,6 +34,14 @@ struct Args {
     shutdown: bool,
 
     #[clap(
+        short = 'F',
+        long = "force-exec",
+        help = "Runs CMD even if the proxy is not yet ready prior to timeout",
+        requires("CMD")
+    )]
+    force: bool,
+
+    #[clap(
         short = 'v',
         long = "verbose",
         help = "Causes linkerd-await to print an error message when disabled",
@@ -66,6 +74,7 @@ async fn main() {
         port,
         backoff,
         shutdown,
+        force,
         verbose,
         timeout,
         cmd,
@@ -100,7 +109,12 @@ async fn main() {
                         "linkerd-proxy failed to become ready within {:?} timeout",
                         timeout
                     );
-                    std::process::exit(EX_UNAVAILABLE)
+
+                    // If force-execute is configured, don't exit, but rather continue to execute command and try proxy shutdown
+                    if !force {
+                        std::process::exit(EX_UNAVAILABLE)
+                    }
+                    
                 }
             }
             if shutdown {

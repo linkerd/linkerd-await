@@ -34,12 +34,11 @@ struct Args {
     shutdown: bool,
 
     #[clap(
-        short = 'F',
-        long = "force-exec",
-        help = "Runs CMD even if the proxy is not yet ready prior to timeout",
+        long = "timeout-non-fatal",
+        help = "Allows the command or shutdown to execute independently of the status of the proxy. (Normally linkerd-await will exit immediately if the proxy is not yet ready prior to timeout.)",
         requires("CMD")
     )]
-    force: bool,
+    timeoutnonfatal: bool,
 
     #[clap(
         short = 'v',
@@ -74,7 +73,7 @@ async fn main() {
         port,
         backoff,
         shutdown,
-        force,
+        timeoutnonfatal,
         verbose,
         timeout,
         cmd,
@@ -110,8 +109,9 @@ async fn main() {
                         timeout
                     );
 
-                    // If force-execute is configured, don't exit, but rather continue to execute command and try proxy shutdown
-                    if !force {
+                    // If timeoutfatal is true, exit. Otherwise, continue to execute command and try proxy shutdown
+                    let timeoutfatal = !timeoutnonfatal;
+                    if timeoutfatal {
                         std::process::exit(EX_UNAVAILABLE)
                     }
                     

@@ -34,13 +34,6 @@ struct Args {
     shutdown: bool,
 
     #[clap(
-        long = "timeout-non-fatal",
-        help = "Allows the command or shutdown to execute independently of the status of the proxy. (Normally linkerd-await will exit immediately if the proxy is not yet ready prior to timeout.)",
-        requires("CMD")
-    )]
-    timeoutnonfatal: bool,
-
-    #[clap(
         short = 'v',
         long = "verbose",
         help = "Causes linkerd-await to print an error message when disabled",
@@ -55,6 +48,18 @@ struct Args {
         help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
     )]
     timeout: Option<time::Duration>,
+
+    #[clap(
+        long,
+        help = "Controls whether a readiness timeout failure prevents CMD from running",
+        default_value("true"),
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        requires("CMD")
+    )]
+    timeout_fatal: bool,
 
     #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
@@ -73,9 +78,9 @@ async fn main() {
         port,
         backoff,
         shutdown,
-        timeoutnonfatal,
         verbose,
         timeout,
+        timeout_fatal,
         cmd,
         args,
     } = Args::parse();
@@ -109,12 +114,12 @@ async fn main() {
                         timeout
                     );
 
-                    // If timeoutfatal is true, exit. Otherwise, continue to execute command and try proxy shutdown
-                    let timeoutfatal = !timeoutnonfatal;
-                    if timeoutfatal {
+                    // Continue running the command when timeouts are configured
+                    // to be non-fatal.
+                    if timeout_fatal {
                         std::process::exit(EX_UNAVAILABLE)
                     }
-                    
+
                 }
             }
             if shutdown {

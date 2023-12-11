@@ -6,26 +6,32 @@ only then executes a command.
 ## Usage
 
 ```text
-linkerd-await 0.2.7
+linkerd-await 0.2.8
 Wait for linkerd to become ready before running a program
 
-USAGE:
-    linkerd-await [OPTIONS] [ARGS]
+Usage: linkerd-await [OPTIONS] [CMD] [ARGS]...
 
-ARGS:
-    <CMD>        The command to run after linkerd is ready
-    <ARGS>...    Arguments to pass to CMD if specified
+Arguments:
+  [CMD]      The command to run after linkerd is ready
+  [ARGS]...  Arguments to pass to CMD if specified
 
-OPTIONS:
-    -b, --backoff <BACKOFF>    Time to wait after a failed readiness check [default: 1s]
-    -h, --help                 Print help information
-    -p, --port <PORT>          The port of the local Linkerd proxy admin server [default: 4191]
-    -S, --shutdown             Forks the program and triggers proxy shutdown on completion
-    -t, --timeout <TIMEOUT>    Causes linked-await to fail when the timeout elapses before the proxy
-                               becomes ready
-    -v, --verbose              Causes linkerd-await to print an error message when disabled [env:
-                               LINKERD_AWAIT_VERBOSE=]
-    -V, --version              Print version information
+Options:
+  -p, --port <PORT>
+          The port of the local Linkerd proxy admin server [default: 4191]
+  -b, --backoff <BACKOFF>
+          Time to wait after a failed readiness check [default: 1s]
+  -S, --shutdown
+          Forks the program and triggers proxy shutdown on completion
+  -v, --verbose
+          Causes linkerd-await to print an error message when disabled [env: LINKERD_AWAIT_VERBOSE=]
+  -t, --timeout <TIMEOUT>
+          Causes linked-await to fail when the timeout elapses before the proxy becomes ready
+      --timeout-fatal[=<TIMEOUT_FATAL>]
+          Controls whether a readiness timeout failure prevents CMD from running [default: true] [possible values: true, false]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```
 
 ## Examples
@@ -35,7 +41,7 @@ OPTIONS:
 ```dockerfile
 # Create a base layer with linkerd-await from a recent release.
 FROM docker.io/curlimages/curl:latest as linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.7
+ARG LINKERD_AWAIT_VERSION=v0.2.8
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
     chmod 755 /tmp/linkerd-await
 

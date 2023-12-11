@@ -68,6 +68,7 @@ jobs:
         if: matrix.arch == 'arm64'
       - run: apt-get update && apt-get install -y g++-arm-linux-gnueabihf  gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
         if: matrix.arch == 'arm'
+      - run: just release
       - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: ${{ matrix.arch }}-artifacts

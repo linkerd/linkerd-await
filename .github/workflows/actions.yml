@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: linkerd/dev/actions/setup-tools@v42
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just actionlint
 
@@ -23,6 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: linkerd/dev/actions/setup-tools@v42
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just actions-dev-versions

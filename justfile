@@ -159,6 +159,9 @@ release: fetch build
     {{ _strip }} release/{{ _package_name }}
     {{ _shasum }} release/{{ _package_name }} >release/{{ _package_name }}.shasum
 
+rustup:
+    rustup target add {{ _cargo_target }}
+
 # Display the git history minus dependabot updates
 history *paths='.':
     @git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}

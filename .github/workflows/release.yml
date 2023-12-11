@@ -3,7 +3,6 @@ name: Release
 on:
   pull_request:
     paths:
-      - .github/actions/package/*
       - .github/workflows/release.yml
       - justfile
   push:
@@ -54,20 +53,23 @@ jobs:
     name: Package (${{ matrix.arch }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      ARCH: ${{ matrix.arch }}
+      PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
+      CARGO_RELEASE: "1"
+      DEBIAN_FRONTEND: noninteractive
+    container: docker://ghcr.io/linkerd/dev:v42-rust
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-      - name: package
-        uses: ./.github/actions/package
-        with:
-          entrypoint: just
-          args: release
-        env:
-          CARGO: cross
-          CARGO_RELEASE: "1"
-          CROSS_DOCKER_IN_DOCKER: true
-          PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
-          ARCH: ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
+      - run: just rustup
+        if: matrix.arch != 'amd64'
+      - run: apt-get update && apt-get install -y g++-aarch64-linux-gnu gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+        if: matrix.arch == 'arm64'
+      - run: apt-get update && apt-get install -y g++-arm-linux-gnueabihf  gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+        if: matrix.arch == 'arm'
+      - run: just release
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: ${{ matrix.arch }}-artifacts
           path: release/*

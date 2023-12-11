@@ -1,6 +1,9 @@
 #![deny(warnings, rust_2018_idioms)]
 
 use clap::Parser;
+use http_body_util::Empty;
+use hyper::body::Bytes;
+use hyper_util::{client::legacy as client, rt::TokioExecutor};
 use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
 use tokio::time;
 
@@ -230,7 +233,7 @@ async fn await_ready(auth: http::uri::Authority, backoff: time::Duration) {
         .build()
         .unwrap();
 
-    let client = hyper::Client::default();
+    let client = client::Client::builder(TokioExecutor::new()).build_http::<Empty<Bytes>>();
     loop {
         match time::timeout(TIMEOUT, client.get(uri.clone())).await {
             Ok(Ok(ref rsp)) if rsp.status().is_success() => return,
@@ -250,10 +253,13 @@ async fn send_shutdown(auth: http::uri::Authority) {
     let req = http::Request::builder()
         .method(http::Method::POST)
         .uri(uri)
-        .body(Default::default())
+        .body(Empty::<Bytes>::default())
         .expect("shutdown request must be valid");
 
-    let _ = hyper::Client::default().request(req).await;
+    let _ = client::Client::builder(TokioExecutor::new())
+        .build_http()
+        .request(req)
+        .await;
 }
 
 fn parse_duration(s: &str) -> Result<time::Duration, InvalidDuration> {

@@ -7,9 +7,10 @@ jobs:
   check:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v32-rust
+    container: ghcr.io/linkerd/dev:v42-rust
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just fetch
       - run: just check-fmt
       - run: just clippy

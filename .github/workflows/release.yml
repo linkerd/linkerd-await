@@ -3,7 +3,6 @@ name: Release
 on:
   pull_request:
     paths:
-      - .github/actions/package/*
       - .github/workflows/release.yml
       - justfile
   push:
@@ -53,25 +52,21 @@ jobs:
         arch: [amd64, arm64, arm]
     name: Package (${{ matrix.arch }})
     runs-on: ubuntu-latest
+
     timeout-minutes: 10
+    container: docker://ghcr.io/linkerd/dev:v42-rust-musl
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
-      - name: package
-        uses: ./.github/actions/package
-        with:
-          entrypoint: just
-          args: release
-        env:
-          CARGO: cross
-          CARGO_RELEASE: "1"
-          CROSS_DOCKER_IN_DOCKER: true
-          PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
+      - env:
           ARCH: ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v3
+          PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
+          CARGO_RELEASE: "1"
+        run: just release
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: ${{ matrix.arch }}-artifacts
-          path: release/*
+          path: target/package/*
 
   publish:
     needs: [meta, package]

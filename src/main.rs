@@ -49,6 +49,18 @@ struct Args {
     )]
     timeout: Option<time::Duration>,
 
+    #[clap(
+        long,
+        help = "Controls whether a readiness timeout failure prevents CMD from running",
+        default_value("true"),
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        requires("CMD")
+    )]
+    timeout_fatal: bool,
+
     #[clap(name = "CMD", help = "The command to run after linkerd is ready")]
     cmd: Option<String>,
 
@@ -68,6 +80,7 @@ async fn main() {
         shutdown,
         verbose,
         timeout,
+        timeout_fatal,
         cmd,
         args,
     } = Args::parse();
@@ -100,7 +113,13 @@ async fn main() {
                         "linkerd-proxy failed to become ready within {:?} timeout",
                         timeout
                     );
-                    std::process::exit(EX_UNAVAILABLE)
+
+                    // Continue running the command when timeouts are configured
+                    // to be non-fatal.
+                    if timeout_fatal {
+                        std::process::exit(EX_UNAVAILABLE)
+                    }
+
                 }
             }
             if shutdown {

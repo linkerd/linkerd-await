@@ -149,7 +149,7 @@ test *flags:
 
 # Build linkerd-await
 build:
-    {{ _cargo }} build --frozen --target={{ _cargo_target }} \
+    RUSTFLAGS='-C target-feature=+crt-static' {{ _cargo }} build --frozen --target={{ _cargo_target }} \
         {{ if build_type == "release" { "--release" } else { "" } }} \
         {{ _fmt }}
 

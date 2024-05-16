@@ -1,15 +1,19 @@
 {
 	"name": "linkerd-await",
-	"image": "ghcr.io/linkerd/dev:v42",
-	"extensions": [
-		"DavidAnson.vscode-markdownlint",
-		"kokakiwi.vscode-just",
-		"NathanRidley.autotrim",
-		"rust-lang.rust-analyzer",
-		"samverschueren.final-newline",
-		"streetsidesoftware.code-spell-checker",
-		"tamasfe.even-better-toml",
-	],
+	"image": "ghcr.io/linkerd/dev:v43",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"DavidAnson.vscode-markdownlint",
+				"kokakiwi.vscode-just",
+				"NathanRidley.autotrim",
+				"rust-lang.rust-analyzer",
+				"samverschueren.final-newline",
+				"streetsidesoftware.code-spell-checker",
+				"tamasfe.even-better-toml"
+			]
+		}
+	},
 	"runArgs": [
 		"--init",
 	],

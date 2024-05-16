@@ -35,11 +35,11 @@ jobs:
               echo "Invalid version: $ver" >&2
               exit 1
             fi
-            echo ::set-output name=publish::true
-            echo ::set-output name=version::"$ver"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "version=$ver" >> "$GITHUB_OUTPUT"
           else
             sha="${{ github.sha }}"
-            echo ::set-output name=version::"test-${sha:0:7}"
+            echo version="test-${sha:0:7}" >> "$GITHUB_OUTPUT"
           fi
     outputs:
       publish: ${{ steps.meta.outputs.publish }}
@@ -58,7 +58,7 @@ jobs:
       PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
       CARGO_RELEASE: "1"
       DEBIAN_FRONTEND: noninteractive
-    container: docker://ghcr.io/linkerd/dev:v42-rust
+    container: docker://ghcr.io/linkerd/dev:v43-rust
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033

@@ -21,11 +21,11 @@ package_arch := env_var_or_default("ARCH", "amd64")
 # If a `package_arch` is specified, then we change the default cargo `--target`
 # to support cross-compilation. Otherwise, we use `rustup` to find the default.
 _cargo_target := if package_arch == "amd64" {
-        "x86_64-unknown-linux-gnu"
+        "x86_64-unknown-linux-musl"
     } else if package_arch == "arm64" {
-        "aarch64-unknown-linux-gnu"
+        "aarch64-unknown-linux-musl"
     } else if package_arch == "arm" {
-        "armv7-unknown-linux-gnueabihf"
+        "armv7-unknown-linux-musleabihf"
     } else {
         `rustup show | sed -n 's/^Default host: \(.*\)/\1/p'`
     }
@@ -149,9 +149,7 @@ test *flags:
 
 # Build linkerd-await
 build:
-    {{ _cargo }} build --frozen --target={{ _cargo_target }} \
-        {{ if build_type == "release" { "--release" } else { "" } }} \
-        {{ _fmt }}
+    just-cargo profile={{ build_type }} target={{ _cargo_target }} build
 
 release: fetch build
     @mkdir -p release

@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just fetch
       - run: just check-fmt
@@ -29,7 +29,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
       - uses: EmbarkStudios/cargo-deny-action@3f4a782664881cf5725d0ffd23969fcce89fd868
         with:
           command: check ${{ matrix.checks }}

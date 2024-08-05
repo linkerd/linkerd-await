@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just release
-      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+      - uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029
         with:
           name: ${{ matrix.arch }}-artifacts
           path: release/*

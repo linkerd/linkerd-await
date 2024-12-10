@@ -58,7 +58,7 @@ jobs:
       PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
       CARGO_RELEASE: "1"
       DEBIAN_FRONTEND: noninteractive
-    container: docker://ghcr.io/linkerd/dev:v43-rust-musl
+    container: docker://ghcr.io/linkerd/dev:v44-rust-musl
     steps:
       - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033

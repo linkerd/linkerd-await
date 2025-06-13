@@ -4,7 +4,7 @@ use clap::Parser;
 use http_body_util::Empty;
 use hyper::body::Bytes;
 use hyper_util::{client::legacy as client, rt::TokioExecutor};
-use std::{convert::TryInto, error, fmt, io, process::ExitStatus, str::FromStr};
+use std::{error, fmt, io, process::ExitStatus, str::FromStr};
 use tokio::time;
 
 #[derive(Clone, Debug, Parser)]
@@ -129,8 +129,8 @@ async fn main() {
                 let cmd = cmd.expect("Command must be specified with --shutdown");
 
                 // If shutdown is configured, fork the process and proxy
-                // SIGTERM.
-                let ex = fork_with_sigterm(cmd, args).await;
+                // shutdown signals to it.
+                let ex = fork_with_shutdown(cmd, args).await;
 
                 // Once the process completes, issue a shutdown request to the
                 // proxy.
@@ -170,56 +170,105 @@ fn linkerd_disabled_reason() -> Option<String> {
 
 /// Execs the process.
 fn exec(cmd: String, args: Vec<String>) {
-    use std::{
-        os::unix::process::CommandExt,
-        process::{self, Command},
-    };
+    use std::process::{self, Command};
 
     // Execute the command (and never return). If the command could not be
     // executed, just exit with an OS error.
-    let err = Command::new(&cmd).args(args).exec();
-    eprintln!("Failed to exec child program: {}: {}", cmd, err);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+
+        let err = Command::new(&cmd).args(args).exec();
+        eprintln!("Failed to exec child program: {}: {}", cmd, err);
+    }
+
+    #[cfg(windows)]
+    {
+        if let Some(err) = Command::new(&cmd).args(args).status().err() {
+            eprintln!("Failed to exec child program: {}: {}", cmd, err);
+        }
+    }
+
     process::exit(EX_OSERR);
 }
 
-/// Forks the specified process, proxying SIGTERM.
-async fn fork_with_sigterm(cmd: String, args: Vec<String>) -> io::Result<ExitStatus> {
-    use nix::{
-        sys::signal::{kill, Signal::SIGTERM},
-        unistd::Pid,
-    };
-    use std::os::unix::process::ExitStatusExt;
-    use tokio::{
-        process::Command,
-        signal::unix::{signal, SignalKind},
-    };
+/// Forks the specified process, proxying shutdown signals to it.
+/// On Unix systems that is SIGTERM, and on Windows that is Ctrl-C and Ctrl-Break.
+async fn fork_with_shutdown(cmd: String, args: Vec<String>) -> io::Result<ExitStatus> {
+    use tokio::process::Command;
 
     let mut child = match Command::new(&cmd).args(args).spawn() {
         Ok(child) => child,
         Err(e) => {
             eprintln!("Failed to fork child program: {}: {}", cmd, e);
-            return Ok(ExitStatus::from_raw(EX_OSERR));
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::ExitStatusExt;
+                return Ok(std::process::ExitStatus::from_raw(EX_OSERR));
+            }
+
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::ExitStatusExt;
+                return Ok(std::process::ExitStatus::from_raw(EX_OSERR as u32));
+            }
         }
     };
 
-    // If the process is running, wait until we receive a SIGTERM, which kubelet
-    // uses to initiate graceful shutdown.
-    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+    #[cfg(unix)]
+    {
+        use nix::{
+            sys::signal::{kill, Signal::SIGTERM},
+            unistd::Pid,
+        };
+        use std::convert::TryInto;
+        use tokio::signal::unix::{signal, SignalKind};
 
-    // Wait for the process to exit on its own or, if a SIGTERM is received,
-    // proxy the signal so it begins shutdown.
-    tokio::select! {
-        ex = child.wait() => ex,
-        _ = sigterm.recv() => {
-            if let Some(pid) = child.id() {
-                // If the child hasn't already completed, send a SIGTERM.
-                if let Err(e) = kill(Pid::from_raw(pid.try_into().expect("Invalid PID")), SIGTERM) {
-                    eprintln!("Failed to forward SIGTERM to child process: {}", e);
+        // If the process is running, wait until we receive a SIGTERM, which kubelet
+        // uses to initiate graceful shutdown.
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+
+        // Wait for the process to exit on its own or, if a SIGTERM is received,
+        // proxy the signal so it begins shutdown.
+        tokio::select! {
+            ex = child.wait() => ex,
+            _ = sigterm.recv() => {
+                if let Some(pid) = child.id() {
+                    // If the child hasn't already completed, send a SIGTERM.
+                    if let Err(e) = kill(Pid::from_raw(pid.try_into().expect("Invalid PID")), SIGTERM) {
+                        eprintln!("Failed to forward SIGTERM to child process: {}", e);
+                    }
                 }
+                // Wait to get the child's exit code.
+                child.wait().await
             }
-            // Wait to get the child's exit code.
-            child.wait().await
         }
+    }
+
+    #[cfg(windows)]
+    {
+        use tokio::signal::windows::{ctrl_break, ctrl_c};
+
+        let mut ctrl_break = ctrl_break().expect("Failed to register Ctrl-Break handler");
+        let mut ctrl_c = ctrl_c().expect("Failed to register  Ctrl-C handler");
+
+        // Wait for either the child to exit, or a console signal
+        let exit = tokio::select! {
+            status = child.wait() => status,
+
+            _ = ctrl_c.recv() => {
+                let _ = child.kill().await;
+                child.wait().await
+            },
+
+            _ = ctrl_break.recv() => {
+                let _ = child.kill().await;
+                child.wait().await
+            },
+        };
+
+        exit
     }
 }
 

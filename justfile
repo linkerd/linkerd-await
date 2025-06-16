@@ -18,16 +18,20 @@ package_version := env_var_or_default("PACKAGE_VERSION", `git rev-parse --short 
 # The architecture name to use for packages. Either 'amd64', 'arm64', or 'arm'.
 package_arch := env_var_or_default("ARCH", "amd64")
 
+os := env_var_or_default("OS", "linux")
+
 # If a `package_arch` is specified, then we change the default cargo `--target`
 # to support cross-compilation. Otherwise, we use `rustup` to find the default.
-_cargo_target := if package_arch == "amd64" {
+_cargo_target := if os + '-' + package_arch == "linux-amd64" {
         "x86_64-unknown-linux-musl"
-    } else if package_arch == "arm64" {
+    } else if os + '-' + package_arch == "linux-arm64" {
         "aarch64-unknown-linux-musl"
-    } else if package_arch == "arm" {
+    } else if os + '-' + package_arch == "linux-arm" {
         "armv7-unknown-linux-musleabihf"
+    } else if os + '-' + package_arch == "windows-amd64" {
+        "x86_64-pc-windows-gnu"
     } else {
-        `rustup show | sed -n 's/^Default host: \(.*\)/\1/p'`
+        error("unsupported: os=" + os + " arch=" + package_arch)
     }
 
 # Support cross-compilation when `package_arch` changes.
@@ -36,8 +40,8 @@ export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER := "arm-linux-gnueabihf
 _strip := if package_arch == "arm64" { "aarch64-linux-gnu-strip" } else if package_arch == "arm" { "arm-linux-gnueabihf-strip" } else { "strip" }
 
 _target_dir := "target" / _cargo_target / build_type
-_target_bin := _target_dir / "linkerd-await"
-_package_name := "linkerd-await-" + package_version + "-" + package_arch
+_target_bin := _target_dir / "linkerd-await" + if os == 'windows' { '.exe' } else { '' }
+_package_name := "linkerd-await-" + package_version + "-" + package_arch + if os == 'windows' { '.exe' } else { '' }
 _package_dir := "target/package" / _package_name
 _shasum := "shasum -a 256"
 

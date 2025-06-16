@@ -75,7 +75,7 @@ jobs:
       - run: just release
       - uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b
         with:
-          name: ${{ matrix.arch }}-artifacts
+          name: ${{ matrix.arch }}-${{ matrix.os }}-artifacts
           path: release/*
 
   publish:

@@ -56,7 +56,7 @@ jobs:
             arch: arm64
           - os: windows
             arch: arm
-    name: Package (${{ matrix.arch }})
+    name: Package (${{ matrix.arch }}-${{ matrix.os }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

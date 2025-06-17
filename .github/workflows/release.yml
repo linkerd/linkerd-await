@@ -50,22 +50,32 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64, arm]
-    name: Package (${{ matrix.arch }})
+        os: [windows, linux]
+        exclude:
+          - os: windows
+            arch: arm64
+          - os: windows
+            arch: arm
+    name: Package (${{ matrix.arch }}-${{ matrix.os }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       ARCH: ${{ matrix.arch }}
+      OS: ${{ matrix.os }}
       PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
       CARGO_RELEASE: "1"
       DEBIAN_FRONTEND: noninteractive
     container: docker://ghcr.io/linkerd/dev:v44-rust-musl
     steps:
+      - name: Install MinGW
+        if: matrix.os == 'windows'
+        run: apt-get update && apt-get install mingw-w64 -y
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just release
       - uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b
         with:
-          name: ${{ matrix.arch }}-artifacts
+          name: ${{ matrix.arch }}-${{ matrix.os }}-artifacts
           path: release/*
 
   publish:

@@ -80,7 +80,7 @@ jobs:
           path: artifacts
       - run: find artifacts -type f -ls
       - if: needs.meta.outputs.publish == 'true'
-        uses: softprops/action-gh-release@7b4da11513bf3f43f9999e90eabced41ab8bb048
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

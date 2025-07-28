@@ -1,6 +1,6 @@
 [package]
 name = "linkerd-await"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Linkerd Developers <cncf-linkerd-dev@lists.cncf.io>"]
 edition = "2021"
 publish = false

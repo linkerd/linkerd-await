@@ -1,6 +1,6 @@
 {
 	"name": "linkerd-await",
-	"image": "ghcr.io/linkerd/dev:v44",
+	"image": "ghcr.io/linkerd/dev:v47",
 	"customizations": {
 		"vscode": {
 			"extensions": [

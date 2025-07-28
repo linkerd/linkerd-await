@@ -65,7 +65,7 @@ jobs:
       PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
       CARGO_RELEASE: "1"
       DEBIAN_FRONTEND: noninteractive
-    container: docker://ghcr.io/linkerd/dev:v44-rust-musl
+    container: docker://ghcr.io/linkerd/dev:v47-rust-musl
     steps:
       - name: Install MinGW
         if: matrix.os == 'windows'
@@ -73,6 +73,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just release
+        env:
+          CARGO: "cargo auditable"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ matrix.arch }}-${{ matrix.os }}-artifacts

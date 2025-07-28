@@ -88,7 +88,7 @@ async fn main() {
         args,
     } = Args::parse();
 
-    let authority = http::uri::Authority::from_str(&format!("localhost:{}", port))
+    let authority = http::uri::Authority::from_str(&format!("localhost:{port}"))
         .expect("HTTP authority must be valid");
 
     // If linkerd is not explicitly disabled, wait until the proxy is ready
@@ -96,7 +96,7 @@ async fn main() {
     match linkerd_disabled_reason() {
         Some(reason) => {
             if verbose {
-                eprintln!("Linkerd readiness check skipped: {}", reason);
+                eprintln!("Linkerd readiness check skipped: {reason}");
             }
         }
         None => {
@@ -113,8 +113,7 @@ async fn main() {
                 () = await_ready(authority.clone(), backoff) => {},
                 timeout = await_timeout => {
                     eprintln!(
-                        "linkerd-proxy failed to become ready within {:?} timeout",
-                        timeout
+                        "linkerd-proxy failed to become ready within {timeout:?} timeout"
                     );
 
                     // Continue running the command when timeouts are configured
@@ -179,7 +178,7 @@ fn exec(cmd: String, args: Vec<String>) {
         use std::os::unix::process::CommandExt;
 
         let err = Command::new(&cmd).args(args).exec();
-        eprintln!("Failed to exec child program: {}: {}", cmd, err);
+        eprintln!("Failed to exec child program: {cmd}: {err}");
     }
 
     #[cfg(windows)]
@@ -200,7 +199,7 @@ async fn fork_with_shutdown(cmd: String, args: Vec<String>) -> io::Result<ExitSt
     let mut child = match Command::new(&cmd).args(args).spawn() {
         Ok(child) => child,
         Err(e) => {
-            eprintln!("Failed to fork child program: {}: {}", cmd, e);
+            eprintln!("Failed to fork child program: {cmd}: {e}");
             #[cfg(unix)]
             {
                 use std::os::unix::process::ExitStatusExt;
@@ -237,7 +236,7 @@ async fn fork_with_shutdown(cmd: String, args: Vec<String>) -> io::Result<ExitSt
                 if let Some(pid) = child.id() {
                     // If the child hasn't already completed, send a SIGTERM.
                     if let Err(e) = kill(Pid::from_raw(pid.try_into().expect("Invalid PID")), SIGTERM) {
-                        eprintln!("Failed to forward SIGTERM to child process: {}", e);
+                        eprintln!("Failed to forward SIGTERM to child process: {e}");
                     }
                 }
                 // Wait to get the child's exit code.

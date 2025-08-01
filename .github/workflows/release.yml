@@ -49,13 +49,11 @@ jobs:
     needs: [meta]
     strategy:
       matrix:
-        arch: [amd64, arm64, arm]
+        arch: [amd64, arm64]
         os: [windows, linux]
         exclude:
           - os: windows
             arch: arm64
-          - os: windows
-            arch: arm
     name: Package (${{ matrix.arch }}-${{ matrix.os }})
     runs-on: ubuntu-latest
     timeout-minutes: 10

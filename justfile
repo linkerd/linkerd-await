@@ -15,7 +15,7 @@ _cargo := env_var_or_default("CARGO", "cargo" + if toolchain != "" { " +" + tool
 # The version name to use for packages.
 package_version := env_var_or_default("PACKAGE_VERSION", `git rev-parse --short HEAD`)
 
-# The architecture name to use for packages. Either 'amd64', 'arm64', or 'arm'.
+# The architecture name to use for packages. Either 'amd64' or 'arm64'.
 package_arch := env_var_or_default("ARCH", "amd64")
 
 os := env_var_or_default("OS", "linux")
@@ -26,8 +26,6 @@ _cargo_target := if os + '-' + package_arch == "linux-amd64" {
         "x86_64-unknown-linux-musl"
     } else if os + '-' + package_arch == "linux-arm64" {
         "aarch64-unknown-linux-musl"
-    } else if os + '-' + package_arch == "linux-arm" {
-        "armv7-unknown-linux-musleabihf"
     } else if os + '-' + package_arch == "windows-amd64" {
         "x86_64-pc-windows-gnu"
     } else {
@@ -36,8 +34,7 @@ _cargo_target := if os + '-' + package_arch == "linux-amd64" {
 
 # Support cross-compilation when `package_arch` changes.
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER := "aarch64-linux-gnu-gcc"
-export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER := "arm-linux-gnueabihf-gcc"
-_strip := if package_arch == "arm64" { "aarch64-linux-gnu-strip" } else if package_arch == "arm" { "arm-linux-gnueabihf-strip" } else { "strip" }
+_strip := if package_arch == "arm64" { "aarch64-linux-gnu-strip" } else { "strip" }
 
 _target_dir := "target" / _cargo_target / build_type
 _target_bin := _target_dir / "linkerd-await" + if os == 'windows' { '.exe' } else { '' }

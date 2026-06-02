@@ -6,7 +6,7 @@ only then executes a command.
 ## Usage
 
 ```text
-linkerd-await 0.2.9
+linkerd-await 0.3.1
 Wait for linkerd to become ready before running a program
 
 Usage: linkerd-await [OPTIONS] [CMD] [ARGS]...
@@ -25,7 +25,7 @@ Options:
   -v, --verbose
           Causes linkerd-await to print an error message when disabled [env: LINKERD_AWAIT_VERBOSE=]
   -t, --timeout <TIMEOUT>
-          Causes linked-await to fail when the timeout elapses before the proxy becomes ready
+          Causes linkerd-await to fail when the timeout elapses before the proxy becomes ready
       --timeout-fatal[=<TIMEOUT_FATAL>]
           Controls whether a readiness timeout failure prevents CMD from running [default: true] [possible values: true, false]
   -h, --help

@@ -17,7 +17,7 @@ hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 [dependencies.clap]
 version = "4"
 default-features = false
-features = ["derive", "env", "std"]
+features = ["derive", "env", "help", "std", "usage"]
 
 [dependencies.nix]
 version = "0.31"

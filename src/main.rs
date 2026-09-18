@@ -48,7 +48,7 @@ struct Args {
         short = 't',
         long = "timeout",
         value_parser = parse_duration,
-        help = "Causes linked-await to fail when the timeout elapses before the proxy becomes ready"
+        help = "Causes linkerd-await to fail when the timeout elapses before the proxy becomes ready"
     )]
     timeout: Option<time::Duration>,
 
@@ -250,7 +250,7 @@ async fn fork_with_shutdown(cmd: String, args: Vec<String>) -> io::Result<ExitSt
         use tokio::signal::windows::{ctrl_break, ctrl_c};
 
         let mut ctrl_break = ctrl_break().expect("Failed to register Ctrl-Break handler");
-        let mut ctrl_c = ctrl_c().expect("Failed to register  Ctrl-C handler");
+        let mut ctrl_c = ctrl_c().expect("Failed to register Ctrl-C handler");
 
         // Wait for either the child to exit, or a console signal
         let exit = tokio::select! {

@@ -124,29 +124,29 @@ async fn main() {
 
                 }
             }
-            if shutdown {
-                let cmd = cmd.expect("Command must be specified with --shutdown");
+        }
+    }
 
-                // If shutdown is configured, fork the process and proxy
-                // shutdown signals to it.
-                let ex = fork_with_shutdown(cmd, args).await;
+    if shutdown {
+        let cmd = cmd.expect("Command must be specified with --shutdown");
 
-                // Once the process completes, issue a shutdown request to the
-                // proxy.
-                send_shutdown(authority).await;
+        // If shutdown is configured, fork the process and proxy shutdown
+        // signals to it.
+        let ex = fork_with_shutdown(cmd, args).await;
 
-                // Try to exit with the process's original exit code
-                if let Ok(status) = ex {
-                    if let Some(code) = status.code() {
-                        std::process::exit(code);
-                    }
-                }
+        // Once the process completes, issue a shutdown request to the proxy.
+        send_shutdown(authority).await;
 
-                // If we didn't get an exit code from the forked program, fail
-                // with an OS error.
-                std::process::exit(EX_OSERR);
+        // Try to exit with the process's original exit code
+        if let Ok(status) = ex {
+            if let Some(code) = status.code() {
+                std::process::exit(code);
             }
         }
+
+        // If we didn't get an exit code from the forked program, fail with an
+        // OS error.
+        std::process::exit(EX_OSERR);
     }
 
     if let Some(cmd) = cmd {

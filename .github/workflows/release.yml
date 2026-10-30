@@ -63,7 +63,7 @@ jobs:
       PACKAGE_VERSION: ${{ needs.meta.outputs.version }}
       CARGO_RELEASE: "1"
       DEBIAN_FRONTEND: noninteractive
-    container: docker://ghcr.io/linkerd/dev:v47-rust-musl
+    container: docker://ghcr.io/linkerd/dev:v53-rust-musl
     steps:
       - name: Install MinGW
         if: matrix.os == 'windows'

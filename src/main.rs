@@ -140,6 +140,16 @@ async fn main() {
                     if let Some(code) = status.code() {
                         std::process::exit(code);
                     }
+
+                    // If the forked program was terminated by a signal, exit
+                    // with 128 + the signal number, as shells do.
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::process::ExitStatusExt;
+                        if let Some(signal) = status.signal() {
+                            std::process::exit(128 + signal);
+                        }
+                    }
                 }
 
                 // If we didn't get an exit code from the forked program, fail
@@ -203,7 +213,9 @@ async fn fork_with_shutdown(cmd: String, args: Vec<String>) -> io::Result<ExitSt
             #[cfg(unix)]
             {
                 use std::os::unix::process::ExitStatusExt;
-                return Ok(std::process::ExitStatus::from_raw(EX_OSERR));
+                // `from_raw` takes a wait status, which stores the exit code
+                // in the second byte.
+                return Ok(std::process::ExitStatus::from_raw(EX_OSERR << 8));
             }
 
             #[cfg(windows)]

@@ -17,11 +17,12 @@ exceptions = [
     # they use data from the unicode tables to generate the tables which are
     # included in the application. We do not distribute those data files so
     # this is not a problem for us. See https://github.com/dtolnay/unicode-ident/pull/9/files
+    # and https://github.com/dtolnay/unicode-ident/pull/28
     # for more details.
     { allow = [
         "MIT",
         "Apache-2.0",
-        "Unicode-DFS-2016",
+        "Unicode-3.0",
     ], name = "unicode-ident" },
 ]
 

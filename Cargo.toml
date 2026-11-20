@@ -20,7 +20,7 @@ default-features = false
 features = ["derive", "env", "help", "std", "usage"]
 
 [dependencies.nix]
-version = "0.31"
+version = "0.32"
 default-features = false
 features = ["process", "signal"]
 
